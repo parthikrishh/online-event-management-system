@@ -157,7 +157,7 @@ Or connect your **GitHub repository directly to Netlify** for automatic deployme
 **Parthiban K B**
 
 * GitHub: https://github.com/parthikrishh
-* Email: [itsparthihere@gmail.com](mailto:itsparthihere@gmail.com)
+* Linkedin: www.linkedin.com/in/parthikrishh
 
 ---
 
