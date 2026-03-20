@@ -71,6 +71,18 @@ https://eventx-management-platform.netlify.app/
 
 ![Hero Section](src/assets/hero.png)
 
+### 6) Explore Events - Card Layout
+
+![Explore Events Card Layout](screenshots/home.png)
+
+### 7) Admin Event Management
+
+![Admin Event Management](screenshots/admin-dashboard.png)
+
+### 8) User Booking History
+
+![User Booking History](screenshots/user-dashboard.png)
+
 ---
 
 ## 📱 Responsive Design
