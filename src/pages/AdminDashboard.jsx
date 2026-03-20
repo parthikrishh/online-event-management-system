@@ -23,7 +23,6 @@ export default function AdminDashboard() {
   const { data: reviewsData, loading: reviewsLoading, error: reviewsError } = useQueryState(api.misc.listReviews);
   const { data: logsData, error: logsError } = useQueryState(api.misc.listLogs);
   const { data: promoCodesData, loading: promoCodesLoading, error: promoCodesError } = useQueryState(api.promos.list);
-  const { loading: taxSettingsLoading } = useQueryState(api.settings.getTax);
 
   const saveEventMutation = useMutation(api.events.save);
   const deleteEventMutation = useMutation(api.events.remove);
@@ -38,7 +37,6 @@ export default function AdminDashboard() {
   const cancelAndRefundMutation = useMutation(api.events.cancelAndRefund);
   const savePromoMutation = useMutation(api.promos.save);
   const deletePromoMutation = useMutation(api.promos.remove);
-  const saveTaxMutation = useMutation(api.settings.saveTax);
   const cancelBookingMutation = useMutation(api.bookings.cancel);
 
   const users = usersData || [];
@@ -223,7 +221,6 @@ export default function AdminDashboard() {
     active: true,
     expiresAt: '',
   });
-  const [taxForm, setTaxForm] = useState({ cgstRate: '9', sgstRate: '9' });
   const pageSize = 8;
 
   const openAddEvent = () => {
@@ -654,21 +651,6 @@ export default function AdminDashboard() {
         console.error("Refund processing failed", err);
         showToast("Operation failed.", "error");
       }
-    }
-  };
-
-  const handleSaveTaxSettings = async (e) => {
-    e.preventDefault();
-    try {
-      await saveTaxMutation({
-        cgstRate: Number(taxForm.cgstRate || 0),
-        sgstRate: Number(taxForm.sgstRate || 0),
-      });
-      await addLogMutation({ action: 'Tax Settings Updated', details: `CGST ${taxForm.cgstRate}% and SGST ${taxForm.sgstRate}% updated.` });
-      showToast('Tax settings updated.', 'success');
-    } catch (err) {
-      console.error('Tax settings update failed', err);
-      showToast('Failed to update tax settings.', 'error');
     }
   };
 
@@ -1784,35 +1766,6 @@ export default function AdminDashboard() {
                   Manage discount code validity, limits, expiry and active state.
                 </p>
               </div>
-            </div>
-
-            <div className="admin-card">
-              <h3 style={{ marginBottom: '1rem' }}>Tax Control (Checkout + Invoice)</h3>
-              <form onSubmit={handleSaveTaxSettings} style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                <div className="form-group" style={{ marginBottom: 0, minWidth: '160px' }}>
-                  <label className="form-label">CGST %</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="50"
-                    className="form-input"
-                    value={taxForm.cgstRate}
-                    onChange={(e) => setTaxForm((prev) => ({ ...prev, cgstRate: e.target.value }))}
-                  />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0, minWidth: '160px' }}>
-                  <label className="form-label">SGST %</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="50"
-                    className="form-input"
-                    value={taxForm.sgstRate}
-                    onChange={(e) => setTaxForm((prev) => ({ ...prev, sgstRate: e.target.value }))}
-                  />
-                </div>
-                <button type="submit" className="admin-btn admin-btn-primary" disabled={taxSettingsLoading}>Save Tax Rates</button>
-              </form>
             </div>
 
             <div className="grid" style={{ gridTemplateColumns: 'minmax(320px, 420px) minmax(0, 1fr)' }}>
