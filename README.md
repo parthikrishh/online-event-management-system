@@ -51,17 +51,25 @@ https://eventx-management-platform.netlify.app/
 
 ## 📸 Screenshots
 
-### Home Page
+### 1) Explore Events (Home)
 
-![Home](screenshots/home.png)
+![Explore Events](screenshots/home.png)
 
-### Admin Dashboard
+### 2) Admin Dashboard Overview
 
-![Admin Dashboard](screenshots/admin-dashboard.png)
+![Admin Dashboard Overview](screenshots/admin-dashboard.png)
 
-### User Dashboard
+### 3) Admin Operations View
+
+![Admin Operations View](screenshots/admin-dashboard.png)
+
+### 4) User Dashboard
 
 ![User Dashboard](screenshots/user-dashboard.png)
+
+### 5) Hero Section Preview
+
+![Hero Section](src/assets/hero.png)
 
 ---
 
