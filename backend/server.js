@@ -39,6 +39,16 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true, service: "event-api" });
 });
 
+app.get("/", (_req, res) => {
+  res.json({
+    ok: true,
+    service: "event-api",
+    message: "EventX backend is running.",
+    health: "/api/health",
+    stream: "/api/stream",
+  });
+});
+
 app.get("/api/stream", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
