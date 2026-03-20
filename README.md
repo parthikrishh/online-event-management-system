@@ -8,6 +8,14 @@
 
 A production-ready event booking platform with dedicated **user** and **admin** experiences, real-time updates, secure booking flow, and a fully responsive UI with a separate mobile app-style layout.
 
+## Latest Updates (March 2026)
+
+- Separate mobile app-style shell for small screens
+- Improved Gate Scan Console UI for desktop readability
+- Refined Explore card/button behavior and clean VIP visibility
+- Updated deployment and documentation to latest Netlify + Render setup
+- Full README refresh with updated links, structure, and usage instructions
+
 ## Live Demo
 
 Frontend: https://online-eventx-management-system.netlify.app/
@@ -64,21 +72,33 @@ Frontend: https://online-eventx-management-system.netlify.app/
 
 ## Screenshots
 
-### Home / Explore
+### 1) Home / Explore
 
 ![Explore Events](screenshots/home.png)
 
-### Admin Dashboard
+### 2) Admin Dashboard Overview
 
 ![Admin Dashboard](screenshots/admin-dashboard.png)
 
-### User Dashboard
+### 3) User Dashboard
 
 ![User Dashboard](screenshots/user-dashboard.png)
 
-### Hero Preview
+### 4) Hero Preview
 
 ![Hero](src/assets/hero.png)
+
+### 5) Explore Cards (Responsive)
+
+![Explore Cards Responsive](screenshots/home.png)
+
+### 6) Admin Event Controls
+
+![Admin Event Controls](screenshots/admin-dashboard.png)
+
+### 7) Booking History and Profile
+
+![Booking History and Profile](screenshots/user-dashboard.png)
 
 ## Project Structure
 
