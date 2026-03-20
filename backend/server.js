@@ -143,7 +143,7 @@ const buildSeatPriceMap = (selectedSeats, event) => {
   const vipSeats = new Set(Array.isArray(event.vipSeats) ? event.vipSeats.map((seat) => String(seat).toUpperCase()) : []);
   for (const seat of selectedSeats) {
     const normalizedSeat = String(seat).toUpperCase();
-    const isVip = vipSeats.has(normalizedSeat) || normalizedSeat.startsWith("A") || normalizedSeat.startsWith("B");
+    const isVip = vipSeats.has(normalizedSeat);
     map[seat] = isVip ? Number(event.vipPrice || event.price || 0) : Number(event.price || 0);
   }
   return map;
@@ -374,6 +374,8 @@ app.post("/api/events", async (req, res) => {
     ...payload,
     price: Number(payload.price || 0),
     vipPrice: Number(payload.vipPrice || payload.price || 0),
+    cgstRate: Number(payload.cgstRate ?? 9),
+    sgstRate: Number(payload.sgstRate ?? 9),
     vipSeats: Array.isArray(payload.vipSeats)
       ? [...new Set(payload.vipSeats.map((seat) => String(seat).toUpperCase()))]
       : [],
@@ -456,7 +458,7 @@ app.get("/api/bookings/event/:eventId/seats", async (req, res) => {
 app.post("/api/bookings", async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
-  const { cgstRate, sgstRate } = getTaxSettings(db);
+  const globalTax = getTaxSettings(db);
   const payload = req.body || {};
   const idx = db.events.findIndex((e) => e.id === payload.eventId);
   if (idx === -1) {
@@ -465,6 +467,8 @@ app.post("/api/bookings", async (req, res) => {
   }
 
   const event = db.events[idx];
+  const cgstRate = Number(event?.cgstRate ?? globalTax.cgstRate ?? 9);
+  const sgstRate = Number(event?.sgstRate ?? globalTax.sgstRate ?? 9);
   const selectedSeats = payload.selectedSeats || [];
   const paymentStatus = payload.paymentStatus === "failed" ? "failed" : "paid";
 

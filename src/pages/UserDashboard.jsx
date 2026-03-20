@@ -447,6 +447,12 @@ export default function UserDashboard({ user }) {
                       <span style={{ color: 'var(--text-muted)' }}>Price per ticket:</span>
                       <span>INR {booking.ticketPrice}</span>
                     </div>
+                    {booking.promoCode && (
+                      <div className="receipt-row">
+                        <span style={{ color: 'var(--text-muted)' }}>Promo Code:</span>
+                        <span style={{ fontWeight: 700 }}>{booking.promoCode}</span>
+                      </div>
+                    )}
 
                     <div className="receipt-total">
                       <span>Total Amount</span>

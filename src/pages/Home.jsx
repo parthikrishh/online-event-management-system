@@ -30,7 +30,7 @@ export default function Home({ user }) {
   const [paymentState, setPaymentState] = useState({ processing: false, status: null, transactionId: null });
 
   const { data: eventsData, error: eventsError } = useQueryState(api.events.list);
-  const taxSettings = useQuery(api.settings.getTax);
+  const promoCodesData = useQuery(api.promos.list);
   const secureBookMutation = useMutation(api.bookings.secureBook);
   const bookedSeatsData = useQuery(api.bookings.getBookedSeats, modalEvent ? { eventId: modalEvent.id } : 'skip');
 
@@ -93,8 +93,8 @@ export default function Home({ user }) {
   };
 
   const seatCapacity = Math.max(1, Math.min(500, Number(modalEvent?.capacity || 500)));
-  const cgstRate = Number(taxSettings?.cgstRate ?? 9);
-  const sgstRate = Number(taxSettings?.sgstRate ?? 9);
+  const cgstRate = Number(modalEvent?.cgstRate ?? 9);
+  const sgstRate = Number(modalEvent?.sgstRate ?? 9);
   const vipSeatSet = useMemo(() => {
     const configured = Array.isArray(modalEvent?.vipSeats)
       ? modalEvent.vipSeats.map((seat) => String(seat).toUpperCase())
@@ -104,11 +104,18 @@ export default function Home({ user }) {
 
   const isVipSeat = (seatId) => {
     const normalized = String(seatId).toUpperCase();
-    if (vipSeatSet.size > 0) {
-      return vipSeatSet.has(normalized);
-    }
-    return normalized.startsWith('A') || normalized.startsWith('B');
+    return vipSeatSet.has(normalized);
   };
+
+  const activePromoCodes = useMemo(() => {
+    const now = new Date();
+    return (promoCodesData || []).filter((promo) => {
+      if (!promo.active) return false;
+      if (promo.expiresAt && new Date(promo.expiresAt) < now) return false;
+      if (Number.isFinite(promo.usageLimit) && Number(promo.usedCount || 0) >= Number(promo.usageLimit)) return false;
+      return true;
+    });
+  }, [promoCodesData]);
 
   const seatRows = useMemo(() => {
     const rowCount = Math.ceil(seatCapacity / seatCols.length);
@@ -492,6 +499,23 @@ export default function Home({ user }) {
                         Applied: {appliedPromo.code} (INR {Math.round(appliedPromo.discountAmount)} off)
                       </small>
                     )}
+                    <div style={{ marginTop: '0.6rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                      {activePromoCodes.slice(0, 6).map((promo) => (
+                        <button
+                          key={promo.id}
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{ padding: '0.3rem 0.55rem', fontSize: '0.72rem' }}
+                          onClick={() => {
+                            setPromoCode(promo.code);
+                            setAppliedPromo(null);
+                          }}
+                          title={promo.description || promo.code}
+                        >
+                          {promo.code}
+                        </button>
+                      ))}
+                    </div>
                     <div className="form-group" style={{ marginTop: '0.9rem', marginBottom: 0 }}>
                       <label className="form-label">Payment method</label>
                       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>

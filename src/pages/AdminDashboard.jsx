@@ -188,7 +188,7 @@ export default function AdminDashboard() {
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [eventFormData, setEventFormData] = useState({
-    name: '', description: '', date: '', time: '', location: '', price: '', vipPrice: '', category: '', image: '', capacity: '500', vipSeats: ''
+    name: '', description: '', date: '', time: '', location: '', price: '', vipPrice: '', category: '', image: '', capacity: '500', vipSeats: '', cgstRate: '9', sgstRate: '9'
   });
 
   const [checkInBillId, setCheckInBillId] = useState('');
@@ -228,7 +228,7 @@ export default function AdminDashboard() {
 
   const openAddEvent = () => {
     setEditingEvent(null);
-    setEventFormData({ name: '', description: '', date: '', time: '', location: '', price: '', vipPrice: '', category: '', image: '', capacity: '500', vipSeats: '' });
+    setEventFormData({ name: '', description: '', date: '', time: '', location: '', price: '', vipPrice: '', category: '', image: '', capacity: '500', vipSeats: '', cgstRate: '9', sgstRate: '9' });
     setIsEventModalOpen(true);
   };
 
@@ -245,7 +245,9 @@ export default function AdminDashboard() {
       category: event.category || '',
       image: event.image || '',
       capacity: String(event.capacity || 50),
-      vipSeats: Array.isArray(event.vipSeats) ? event.vipSeats.join(', ') : ''
+      vipSeats: Array.isArray(event.vipSeats) ? event.vipSeats.join(', ') : '',
+      cgstRate: String(event.cgstRate ?? 9),
+      sgstRate: String(event.sgstRate ?? 9)
     });
     setIsEventModalOpen(true);
   };
@@ -428,6 +430,8 @@ export default function AdminDashboard() {
         .split(',')
         .map((seat) => seat.trim().toUpperCase())
         .filter(Boolean),
+      cgstRate: Number(eventFormData.cgstRate || 0),
+      sgstRate: Number(eventFormData.sgstRate || 0),
       capacity: totalCapacity,
       availableCapacity: Math.max(0, totalCapacity - soldTickets),
       status: editingEvent ? editingEvent.status : 'approved'
@@ -2167,6 +2171,33 @@ export default function AdminDashboard() {
                     onChange={e => setEventFormData({ ...eventFormData, vipSeats: e.target.value })}
                   />
                   <small className="text-muted">These seats will be highlighted and charged with VIP pricing.</small>
+                </div>
+
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label">CGST % (Event)</label>
+                    <input
+                      required
+                      type="number"
+                      min="0"
+                      max="50"
+                      className="form-input"
+                      value={eventFormData.cgstRate}
+                      onChange={e => setEventFormData({ ...eventFormData, cgstRate: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label">SGST % (Event)</label>
+                    <input
+                      required
+                      type="number"
+                      min="0"
+                      max="50"
+                      className="form-input"
+                      value={eventFormData.sgstRate}
+                      onChange={e => setEventFormData({ ...eventFormData, sgstRate: e.target.value })}
+                    />
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '1rem' }}>
