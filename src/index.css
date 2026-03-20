@@ -297,6 +297,19 @@ button {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.scan-console__title {
+  font-size: clamp(1.35rem, 2.2vw, 1.7rem);
+  letter-spacing: -0.01em;
+}
+
+.scan-console__subtitle {
+  color: var(--text-muted);
+  font-size: 0.92rem;
 }
 
 .scan-console__header {
@@ -323,14 +336,15 @@ button {
 .scan-kpi p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.8rem;
-  letter-spacing: 0.03em;
+  font-size: 0.79rem;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 
 .scan-kpi h3 {
   margin: 0.45rem 0 0;
   font-size: 1.55rem;
+  line-height: 1.15;
 }
 
 .scan-console__grid {
@@ -366,6 +380,24 @@ button {
   border: 1px solid var(--border);
 }
 
+.scan-console__result-heading {
+  font-size: 1.04rem;
+  letter-spacing: -0.01em;
+}
+
+.scan-console__result-empty,
+.scan-console__result-message {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.scan-console__result-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .scan-console__result-card.tone-success {
   border-color: rgba(16, 185, 129, 0.55);
   background: linear-gradient(145deg, rgba(236, 253, 245, 1), rgba(255, 255, 255, 1));
@@ -398,11 +430,12 @@ button {
 
 .scan-details-list span {
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
 }
 
 .scan-details-list strong {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
+  font-weight: 700;
   text-align: right;
 }
 
@@ -419,10 +452,42 @@ button {
   justify-content: space-between;
   align-items: center;
   gap: 0.9rem;
-  padding: 0.7rem 0.8rem;
+  padding: 0.75rem 0.85rem;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface-raised);
+}
+
+@media (min-width: 1025px) {
+  .scan-console {
+    max-width: 1020px;
+    gap: 1.05rem;
+  }
+
+  .scan-console__grid {
+    gap: 1.1rem;
+  }
+
+  .scan-console__scan-card,
+  .scan-console__result-card {
+    border-radius: 16px;
+  }
+
+  .scan-form {
+    gap: 0.75rem;
+  }
+
+  .scan-form .form-label {
+    font-size: 0.86rem;
+    letter-spacing: 0.01em;
+  }
+
+  .scan-console__scan-card .form-input,
+  .scan-console__result-card p,
+  .scan-recent-row,
+  .scan-time-pill {
+    font-size: 0.92rem;
+  }
 }
 
 .scan-recent-actions {

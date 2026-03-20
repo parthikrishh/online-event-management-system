@@ -1446,8 +1446,8 @@ export default function AdminDashboard() {
           <div className="scan-console">
             <div className="scan-console__header">
               <div>
-                <h2 style={{ marginBottom: '0.2rem' }}>Gate Scan Console</h2>
-                <p style={{ color: 'var(--text-muted)', margin: 0 }}>Fast entry validation with clear status feedback.</p>
+                <h2 className="scan-console__title" style={{ marginBottom: '0.2rem' }}>Gate Scan Console</h2>
+                <p className="scan-console__subtitle" style={{ margin: 0 }}>Fast entry validation with clear status feedback.</p>
               </div>
               <button className="admin-btn admin-btn-secondary" onClick={() => {
                 const data = bookings.filter(b => b.status === 'checked-in').map(b => ({
@@ -1513,12 +1513,12 @@ export default function AdminDashboard() {
               </div>
 
               <div className={`admin-card scan-console__result-card ${currentScanStatus ? `tone-${currentScanStatus.tone}` : ''}`}>
-                <h4 style={{ marginBottom: '0.65rem' }}>Scan Result</h4>
-                {!checkInResult && <p style={{ margin: 0, color: 'var(--text-muted)' }}>Scan a ticket to view validation details.</p>}
+                <h4 className="scan-console__result-heading" style={{ marginBottom: '0.65rem' }}>Scan Result</h4>
+                {!checkInResult && <p className="scan-console__result-empty" style={{ margin: 0 }}>Scan a ticket to view validation details.</p>}
                 {checkInResult && currentScanStatus && (
                   <>
-                    <p style={{ margin: 0, fontWeight: 800 }}>{currentScanStatus.title}</p>
-                    <p style={{ marginTop: '0.35rem', color: 'var(--text-muted)' }}>{currentScanStatus.message}</p>
+                    <p className="scan-console__result-title" style={{ margin: 0 }}>{currentScanStatus.title}</p>
+                    <p className="scan-console__result-message" style={{ marginTop: '0.35rem' }}>{currentScanStatus.message}</p>
                   </>
                 )}
                 {checkInDetails && (
@@ -1526,7 +1526,7 @@ export default function AdminDashboard() {
                     <div><span>User</span><strong>{checkInDetails.userName || 'N/A'}</strong></div>
                     <div><span>Seat</span><strong>{Array.isArray(checkInDetails.seatNumbers) && checkInDetails.seatNumbers.length ? checkInDetails.seatNumbers.join(', ') : 'N/A'}</strong></div>
                     <div><span>Event</span><strong>{checkInDetails.eventName || 'N/A'}</strong></div>
-                    <div><span>Status</span><strong>{String(checkInResult || '').replace('_', ' ').toUpperCase()}</strong></div>
+                    <div><span>Status</span><strong>{String(checkInResult || '').replace('_', ' ')}</strong></div>
                   </div>
                 )}
               </div>
