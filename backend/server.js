@@ -12,6 +12,7 @@ const dbPath = path.join(__dirname, "data", "db.json");
 const app = express();
 const PORT = Number(process.env.PORT || 4000);
 const sseClients = new Set();
+const FRONTEND_URL = process.env.FRONTEND_URL || "";
 
 app.use(cors());
 app.use(express.json());
@@ -46,6 +47,27 @@ app.get("/", (_req, res) => {
     message: "EventX backend is running.",
     health: "/api/health",
     stream: "/api/stream",
+  });
+});
+
+app.get("/api", (_req, res) => {
+  res.json({
+    ok: true,
+    service: "event-api",
+    message: "API root. Use specific endpoints like /api/events, /api/users, /api/bookings.",
+    endpoints: ["/api/health", "/api/events", "/api/users", "/api/bookings", "/api/stream"],
+  });
+});
+
+app.get("/events", (_req, res) => {
+  if (FRONTEND_URL) {
+    res.redirect(302, `${FRONTEND_URL.replace(/\/$/, "")}/events`);
+    return;
+  }
+
+  res.status(400).json({
+    ok: false,
+    message: "This is backend-only route space. Set FRONTEND_URL env var to enable redirect to frontend /events.",
   });
 });
 

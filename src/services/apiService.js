@@ -4,7 +4,12 @@ const jsonHeaders = {
   "Content-Type": "application/json",
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+const PROD_FALLBACK_API_BASE_URL = "https://online-event-management-system-134k.onrender.com";
+const rawApiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = (
+  rawApiBaseUrl
+  || (import.meta.env.DEV ? "" : PROD_FALLBACK_API_BASE_URL)
+).replace(/\/$/, "");
 let streamInitialized = false;
 
 const toUrl = (url) => {
