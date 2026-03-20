@@ -22,6 +22,8 @@ export default function AdminDashboard() {
   const { data: refundsData, loading: refundsLoading, error: refundsError } = useQueryState(api.bookings.listRefunds);
   const { data: reviewsData, loading: reviewsLoading, error: reviewsError } = useQueryState(api.misc.listReviews);
   const { data: logsData, error: logsError } = useQueryState(api.misc.listLogs);
+  const { data: promoCodesData, loading: promoCodesLoading, error: promoCodesError } = useQueryState(api.promos.list);
+  const { loading: taxSettingsLoading } = useQueryState(api.settings.getTax);
 
   const saveEventMutation = useMutation(api.events.save);
   const deleteEventMutation = useMutation(api.events.remove);
@@ -34,6 +36,10 @@ export default function AdminDashboard() {
   const addLogMutation = useMutation(api.misc.addLog);
   const revertCheckInMutation = useMutation(api.bookings.revertCheckIn);
   const cancelAndRefundMutation = useMutation(api.events.cancelAndRefund);
+  const savePromoMutation = useMutation(api.promos.save);
+  const deletePromoMutation = useMutation(api.promos.remove);
+  const saveTaxMutation = useMutation(api.settings.saveTax);
+  const cancelBookingMutation = useMutation(api.bookings.cancel);
 
   const users = usersData || [];
   const events = eventsData || [];
@@ -41,13 +47,14 @@ export default function AdminDashboard() {
   const refunds = refundsData || [];
   const reviews = reviewsData || [];
   const adminLogs = useMemo(() => (logsData ? [...logsData].reverse() : []), [logsData]);
+  const promoCodes = promoCodesData || [];
   const lastUpdated = new Date();
   const isOverviewLoading = usersLoading || eventsLoading || bookingsLoading || refundsLoading || reviewsLoading;
   const isEventsTableLoading = eventsLoading || bookingsLoading || reviewsLoading;
   const isBookingsTableLoading = bookingsLoading || eventsLoading || refundsLoading;
   const isUsersTableLoading = usersLoading || bookingsLoading;
   const isRefundsLoading = refundsLoading || bookingsLoading;
-  const hasApiError = usersError || eventsError || bookingsError || refundsError || reviewsError || logsError;
+  const hasApiError = usersError || eventsError || bookingsError || refundsError || reviewsError || logsError || promoCodesError;
 
   const EVENT_CATEGORIES = [
     'Technology', 'Meetups', 'Music Concerts', 'DJ Night', 'Corporate Events',
@@ -181,12 +188,13 @@ export default function AdminDashboard() {
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [eventFormData, setEventFormData] = useState({
-    name: '', description: '', date: '', time: '', location: '', price: '', vipPrice: '', category: '', image: '', capacity: '500'
+    name: '', description: '', date: '', time: '', location: '', price: '', vipPrice: '', category: '', image: '', capacity: '500', vipSeats: ''
   });
 
   const [checkInBillId, setCheckInBillId] = useState('');
   const [checkInEventId, setCheckInEventId] = useState('');
   const [checkInResult, setCheckInResult] = useState(null);
+  const [checkInDetails, setCheckInDetails] = useState(null);
 
   // Search & Filter states
   const [bookingSearch, setBookingSearch] = useState('');
@@ -204,11 +212,23 @@ export default function AdminDashboard() {
   const [eventPage, setEventPage] = useState(1);
   const [bookingPage, setBookingPage] = useState(1);
   const [userPage, setUserPage] = useState(1);
+  const [editingPromoId, setEditingPromoId] = useState(null);
+  const [promoForm, setPromoForm] = useState({
+    code: '',
+    description: '',
+    discountType: 'percentage',
+    discountValue: '10',
+    minOrderAmount: '0',
+    usageLimit: '',
+    active: true,
+    expiresAt: '',
+  });
+  const [taxForm, setTaxForm] = useState({ cgstRate: '9', sgstRate: '9' });
   const pageSize = 8;
 
   const openAddEvent = () => {
     setEditingEvent(null);
-    setEventFormData({ name: '', description: '', date: '', time: '', location: '', price: '', vipPrice: '', category: '', image: '', capacity: '500' });
+    setEventFormData({ name: '', description: '', date: '', time: '', location: '', price: '', vipPrice: '', category: '', image: '', capacity: '500', vipSeats: '' });
     setIsEventModalOpen(true);
   };
 
@@ -224,7 +244,8 @@ export default function AdminDashboard() {
       vipPrice: event.vipPrice || '',
       category: event.category || '',
       image: event.image || '',
-      capacity: String(event.capacity || 50)
+      capacity: String(event.capacity || 50),
+      vipSeats: Array.isArray(event.vipSeats) ? event.vipSeats.join(', ') : ''
     });
     setIsEventModalOpen(true);
   };
@@ -257,7 +278,7 @@ export default function AdminDashboard() {
       try {
         const affectedBookings = await cancelAndRefundMutation({ id, reason });
         await addLogMutation({ action: 'Event Cancelled', details: `Cancelled "${event.name}". Reason: ${reason}. ${affectedBookings.length} refunds initiated.` });
-        showToast(`Event cancelled. ${affectedBookings.length} bookings have been moved to refunded status.`, "info");
+        showToast(`Event cancelled. ${affectedBookings.length} bookings have been fully cancelled and refunded.`, "info");
       } catch {
         showToast("Cancellation failed.", "error");
       }
@@ -268,8 +289,8 @@ export default function AdminDashboard() {
     const booking = bookings.find(b => b.id === bookingId);
     if (!booking) return;
 
-    if (['refunded', 'cancelled'].includes(booking.status)) {
-      showToast("This booking is already refunded or cancelled.", "warning");
+    if (['refunded', 'fully_cancelled'].includes(booking.status)) {
+      showToast("This booking is already refunded or fully cancelled.", "warning");
       return;
     }
 
@@ -278,7 +299,12 @@ export default function AdminDashboard() {
 
     if (confirm(`Confirm refund of INR ${booking.totalAmount} to ${booking.userName}?`)) {
       try {
-        await processRefundMutation({ bookingId, isApproved: true });
+        const cancelRes = await cancelBookingMutation({
+          bookingId,
+          seatIds: booking.activeSeats || booking.selectedSeats || [],
+          reason,
+        });
+        await processRefundMutation({ bookingId, refundId: cancelRes?.refund?.id, isApproved: true });
         await addLogMutation({ action: 'Manual Refund', details: `Refunded ${booking.userName} for ${booking.eventName}. Reason: ${reason}` });
         showToast("Refund processed successfully.", "success");
       } catch (err) {
@@ -381,7 +407,7 @@ export default function AdminDashboard() {
 
     const soldTickets = editingEvent
       ? bookings
-          .filter((b) => b.eventId === editingEvent.id && !['refunded', 'cancelled', 'refund_requested'].includes(b.status))
+          .filter((b) => b.eventId === editingEvent.id && !['refunded', 'fully_cancelled', 'payment_failed'].includes(b.status))
           .reduce((sum, b) => sum + (b.numTickets || 0), 0)
       : 0;
 
@@ -398,6 +424,10 @@ export default function AdminDashboard() {
         : `evt_${eventFormData.date}_${eventFormData.name.replace(/\s+/g, '_').toLowerCase()}`,
       price: Number(eventFormData.price),
       vipPrice: Number(eventFormData.vipPrice),
+      vipSeats: eventFormData.vipSeats
+        .split(',')
+        .map((seat) => seat.trim().toUpperCase())
+        .filter(Boolean),
       capacity: totalCapacity,
       availableCapacity: Math.max(0, totalCapacity - soldTickets),
       status: editingEvent ? editingEvent.status : 'approved'
@@ -424,13 +454,15 @@ export default function AdminDashboard() {
     }
     try {
       const res = await checkInMutation({ billId: checkInBillId.trim(), eventId: targetEventId });
-      setCheckInResult(res);
-      if (res === 'success') {
+      setCheckInResult(res?.status || 'invalid');
+      setCheckInDetails(res || null);
+      if ((res?.status || '') === 'success') {
         await addLogMutation({ action: 'Check-in', details: `Verified Bill ID ${checkInBillId}.` });
       }
     } catch (err) {
       console.error("Check-in failed", err);
       setCheckInResult('invalid');
+      setCheckInDetails(null);
     }
   };
 
@@ -458,14 +490,14 @@ export default function AdminDashboard() {
     }).sort((a, b) => new Date(a.date) - new Date(b.date)).map(e => {
       // Calculate per-event stats
       const eventBookings = bookings.filter(b => b.eventId === e.id);
-      const activeBookings = eventBookings.filter(b => b.status !== 'refunded' && b.status !== 'cancelled' && b.status !== 'refund_requested');
+      const activeBookings = eventBookings.filter(b => !['refunded', 'fully_cancelled', 'payment_failed'].includes(b.status));
       const eventReviews = reviews.filter(r => r.eventId === e.id);
       return {
         ...e,
         revenue: activeBookings.reduce((sum, b) => sum + b.totalAmount, 0),
         ticketsSold: activeBookings.reduce((sum, b) => sum + b.numTickets, 0),
         avgRating: eventReviews.length > 0 ? (eventReviews.reduce((sum, r) => sum + r.rating, 0) / eventReviews.length).toFixed(1) : 'N/A',
-        refundCount: eventBookings.filter(b => b.status === 'refunded' || b.status === 'cancelled' || b.status === 'refund_requested').length
+        refundCount: eventBookings.filter(b => ['refunded', 'fully_cancelled', 'partially_cancelled', 'refund_requested'].includes(b.status)).length
       };
     });
   };
@@ -580,7 +612,7 @@ export default function AdminDashboard() {
       'Tax (CGST+SGST)': (b.cgst || 0) + (b.sgst || 0),
       'Total Amount': b.totalAmount,
       'Status': b.status.toUpperCase(),
-      'Revenue Impact': ['cancelled', 'refunded'].includes(b.status) ? 0 : b.totalAmount,
+      'Revenue Impact': ['fully_cancelled', 'refunded', 'payment_failed'].includes(b.status) ? 0 : b.totalAmount,
       'DateTime': new Date(b.bookingDate).toLocaleString()
     }));
 
@@ -610,7 +642,7 @@ export default function AdminDashboard() {
       try {
         const refund = refunds.find(r => r.id === refundId);
         if (refund) {
-          await processRefundMutation({ bookingId: refund.bookingId, isApproved: approve });
+          await processRefundMutation({ bookingId: refund.bookingId, refundId: refund.id, isApproved: approve });
           await addLogMutation({ action: 'Refund Processed', details: `${approve ? 'Approved' : 'Rejected'} refund request for booking ID: ${refund.bookingId}.` });
           showToast(`Refund ${approve ? 'approved' : 'rejected'}.`, "success");
         }
@@ -618,6 +650,21 @@ export default function AdminDashboard() {
         console.error("Refund processing failed", err);
         showToast("Operation failed.", "error");
       }
+    }
+  };
+
+  const handleSaveTaxSettings = async (e) => {
+    e.preventDefault();
+    try {
+      await saveTaxMutation({
+        cgstRate: Number(taxForm.cgstRate || 0),
+        sgstRate: Number(taxForm.sgstRate || 0),
+      });
+      await addLogMutation({ action: 'Tax Settings Updated', details: `CGST ${taxForm.cgstRate}% and SGST ${taxForm.sgstRate}% updated.` });
+      showToast('Tax settings updated.', 'success');
+    } catch (err) {
+      console.error('Tax settings update failed', err);
+      showToast('Failed to update tax settings.', 'error');
     }
   };
 
@@ -631,6 +678,77 @@ export default function AdminDashboard() {
         console.error("Delete refund record failed", err);
         showToast("Delete failed.", "error");
       }
+    }
+  };
+
+  const resetPromoForm = () => {
+    setEditingPromoId(null);
+    setPromoForm({
+      code: '',
+      description: '',
+      discountType: 'percentage',
+      discountValue: '10',
+      minOrderAmount: '0',
+      usageLimit: '',
+      active: true,
+      expiresAt: '',
+    });
+  };
+
+  const handlePromoEdit = (promo) => {
+    setEditingPromoId(promo.id);
+    setPromoForm({
+      code: promo.code,
+      description: promo.description || '',
+      discountType: promo.discountType || 'percentage',
+      discountValue: String(promo.discountValue || 0),
+      minOrderAmount: String(promo.minOrderAmount || 0),
+      usageLimit: Number.isFinite(promo.usageLimit) ? String(promo.usageLimit) : '',
+      active: promo.active !== false,
+      expiresAt: promo.expiresAt ? String(promo.expiresAt).slice(0, 10) : '',
+    });
+  };
+
+  const handlePromoSubmit = async (e) => {
+    e.preventDefault();
+    const payload = {
+      id: editingPromoId || undefined,
+      code: promoForm.code,
+      description: promoForm.description,
+      discountType: promoForm.discountType,
+      discountValue: Number(promoForm.discountValue || 0),
+      minOrderAmount: Number(promoForm.minOrderAmount || 0),
+      usageLimit: promoForm.usageLimit === '' ? null : Number(promoForm.usageLimit),
+      active: promoForm.active,
+      expiresAt: promoForm.expiresAt ? new Date(`${promoForm.expiresAt}T23:59:59.000Z`).toISOString() : null,
+    };
+
+    try {
+      await savePromoMutation(payload);
+      await addLogMutation({ action: editingPromoId ? 'Promo Updated' : 'Promo Created', details: `Promo ${payload.code} saved.` });
+      showToast(`Promo ${editingPromoId ? 'updated' : 'created'} successfully.`, 'success');
+      resetPromoForm();
+    } catch (err) {
+      console.error('Promo save failed', err);
+      showToast('Failed to save promo code.', 'error');
+    }
+  };
+
+  const handlePromoDelete = async (id) => {
+    const promo = promoCodes.find((item) => item.id === id);
+    if (!promo) return;
+    if (!confirm(`Delete promo code ${promo.code}?`)) return;
+
+    try {
+      await deletePromoMutation({ id });
+      await addLogMutation({ action: 'Promo Deleted', details: `Promo ${promo.code} deleted.` });
+      showToast('Promo deleted.', 'info');
+      if (editingPromoId === id) {
+        resetPromoForm();
+      }
+    } catch (err) {
+      console.error('Promo delete failed', err);
+      showToast('Failed to delete promo code.', 'error');
     }
   };
 
@@ -711,7 +829,7 @@ export default function AdminDashboard() {
         </button>
         <button
           className={`admin-sidebar-item ${activeTab === 'scan' ? 'active' : ''}`}
-          onClick={() => { handleTabChange('scan'); setCheckInResult(null); setCheckInBillId(''); }}
+          onClick={() => { handleTabChange('scan'); setCheckInResult(null); setCheckInDetails(null); setCheckInBillId(''); }}
         >
           <QrCode size={20} /> Gate Scan
         </button>
@@ -726,6 +844,12 @@ export default function AdminDashboard() {
           onClick={() => handleTabChange('refunds')}
         >
           <RefreshCcw size={20} /> Refunds
+        </button>
+        <button
+          className={`admin-sidebar-item ${activeTab === 'promos' ? 'active' : ''}`}
+          onClick={() => handleTabChange('promos')}
+        >
+          <Star size={20} /> Promo Codes
         </button>
         <button
           className={`admin-sidebar-item ${activeTab === 'reviews' ? 'active' : ''}`}
@@ -1112,6 +1236,7 @@ export default function AdminDashboard() {
                     <th>Event Name</th>
                     <th>Details</th>
                     <th>Financials</th>
+                    <th>Tickets</th>
                     <th>Feedback</th>
                     <th>Actions</th>
                   </tr>
@@ -1131,6 +1256,13 @@ export default function AdminDashboard() {
                         <div style={{ fontSize: '0.9rem' }}>
                           <span style={{ color: 'var(--success)', fontWeight: 'bold' }}>₹{event.revenue.toFixed(0)}</span><br />
                           <small className="text-muted">{event.ticketsSold} Tickets Sold</small>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: '0.82rem', lineHeight: 1.45 }}>
+                          <div><strong>Total:</strong> {event.capacity || 0}</div>
+                          <div><strong>Sold:</strong> {event.ticketsSold || 0}</div>
+                          <div><strong>Remaining:</strong> {Math.max(0, Number(event.availableCapacity ?? ((event.capacity || 0) - (event.ticketsSold || 0))))}</div>
                         </div>
                       </td>
                       <td>
@@ -1155,7 +1287,7 @@ export default function AdminDashboard() {
                     </tr>
                   ))}
                   {sortedEvents.length === 0 && (
-                    <tr><td colSpan="5" style={{ textAlign: 'center' }}>No events found.</td></tr>
+                    <tr><td colSpan="6" style={{ textAlign: 'center' }}>No events found.</td></tr>
                   )}
                 </tbody>
                 </table>
@@ -1212,9 +1344,10 @@ export default function AdminDashboard() {
                   <option value="all">All Status</option>
                   <option value="booked">Booked</option>
                   <option value="checked-in">Checked In</option>
-                  <option value="cancelled">Cancelled</option>
                   <option value="refund_requested">Refund Requested</option>
-                  <option value="refunded">Refunded</option>
+                  <option value="partially_cancelled">Partially Cancelled</option>
+                  <option value="fully_cancelled">Fully Cancelled</option>
+                  <option value="payment_failed">Payment Failed</option>
                 </select>
 
                 <select
@@ -1284,14 +1417,14 @@ export default function AdminDashboard() {
                       <td>{booking.numTickets}</td>
                       <td style={{ color: 'var(--primary)', fontWeight: 'bold' }}>INR {booking.totalAmount}</td>
                       <td>
-                        <span className={`badge ${booking.status === 'checked-in' ? 'badge-admin' : ['cancelled', 'refunded', 'refund_requested'].includes(booking.status) ? 'badge-danger' : 'badge-user'}`} style={{ fontSize: '0.7rem' }}>
+                        <span className={`badge ${booking.status === 'checked-in' ? 'badge-admin' : ['fully_cancelled', 'refunded', 'refund_requested', 'payment_failed'].includes(booking.status) ? 'badge-danger' : ['partially_cancelled'].includes(booking.status) ? 'badge-user' : 'badge-user'}`} style={{ fontSize: '0.7rem' }}>
                           {booking.status ? booking.status.replace('_', ' ').toUpperCase() : 'BOOKED'}
                         </span>
                       </td>
                       <td>{new Date(booking.bookingDate).toLocaleDateString()}</td>
                       <td>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          {!['refunded', 'cancelled'].includes(booking.status) && (
+                          {!['refunded', 'fully_cancelled', 'payment_failed'].includes(booking.status) && (
                             <button className="admin-btn btn-warning" style={{ padding: '0.4rem' }} onClick={() => handleManualRefund(booking.id)} title="Refund Booking">
                               <RefreshCcw size={14} />
                             </button>
@@ -1320,9 +1453,9 @@ export default function AdminDashboard() {
 
         {/* SCAN / CHECK-IN TAB */}
         {activeTab === 'scan' && (
-          <div style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center' }}>
+          <div style={{ maxWidth: 780, margin: '0 auto', textAlign: 'center' }}>
             <div className="flex-between" style={{ justifyContent: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ marginBottom: 0 }}>Gate Check-In Simulator</h2>
+              <h2 style={{ marginBottom: 0 }}>Gate Scan Console</h2>
             </div>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginBottom: '2rem' }}>
               <div className="admin-card" style={{ padding: '1rem 2rem', borderBottom: '3px solid var(--success)' }}>
@@ -1348,7 +1481,7 @@ export default function AdminDashboard() {
                   <Download size={14} /> Export Checked-in
                 </button>
               </div>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Select the event and enter the Bill ID from the user's ticket.</p>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Select event and scan or enter ticket ID for instant validation.</p>
 
               <form onSubmit={submitCheckIn} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
                 <select
@@ -1367,18 +1500,29 @@ export default function AdminDashboard() {
                   ))}
                 </select>
 
-                <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                   <input
                     type="text"
                     placeholder="Enter Bill ID (e.g. BILL-123456)"
                     className="form-input"
                     value={checkInBillId}
                     onChange={(e) => setCheckInBillId(e.target.value)}
+                    style={{ minHeight: '52px', fontSize: '1rem', flex: 1 }}
                     required
                   />
-                  <button type="submit" className="admin-btn admin-btn-primary" style={{ whiteSpace: 'nowrap' }}>Check In</button>
+                  <button type="submit" className="admin-btn admin-btn-primary" style={{ whiteSpace: 'nowrap', minHeight: '52px', padding: '0.8rem 1.5rem', fontSize: '1rem' }}>Validate Entry</button>
                 </div>
               </form>
+
+              {checkInDetails && (
+                <div className="admin-card" style={{ marginBottom: '1rem', textAlign: 'left', border: '1px solid var(--border)' }}>
+                  <h4 style={{ marginBottom: '0.7rem' }}>Scan Details</h4>
+                  <p><strong>User:</strong> {checkInDetails.userName || 'N/A'}</p>
+                  <p><strong>Seat:</strong> {Array.isArray(checkInDetails.seatNumbers) && checkInDetails.seatNumbers.length ? checkInDetails.seatNumbers.join(', ') : 'N/A'}</p>
+                  <p><strong>Event:</strong> {checkInDetails.eventName || 'N/A'}</p>
+                  <p><strong>Status:</strong> {String(checkInResult || '').replace('_', ' ').toUpperCase()}</p>
+                </div>
+              )}
 
               {checkInResult === 'success' && (
                 <div style={{ padding: '1rem', background: 'rgba(16, 185, 129, 0.2)', color: 'var(--success)', borderRadius: '2px', border: '1px solid var(--success)' }}>
@@ -1626,6 +1770,215 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* PROMO CODES TAB */}
+        {activeTab === 'promos' && (
+          <div className="analytics-view">
+            <div className="flex-between" style={{ marginBottom: '1.5rem' }}>
+              <div>
+                <h2 style={{ margin: 0 }}>Promo Code Management</h2>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  Manage discount code validity, limits, expiry and active state.
+                </p>
+              </div>
+            </div>
+
+            <div className="admin-card">
+              <h3 style={{ marginBottom: '1rem' }}>Tax Control (Checkout + Invoice)</h3>
+              <form onSubmit={handleSaveTaxSettings} style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <div className="form-group" style={{ marginBottom: 0, minWidth: '160px' }}>
+                  <label className="form-label">CGST %</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="50"
+                    className="form-input"
+                    value={taxForm.cgstRate}
+                    onChange={(e) => setTaxForm((prev) => ({ ...prev, cgstRate: e.target.value }))}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0, minWidth: '160px' }}>
+                  <label className="form-label">SGST %</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="50"
+                    className="form-input"
+                    value={taxForm.sgstRate}
+                    onChange={(e) => setTaxForm((prev) => ({ ...prev, sgstRate: e.target.value }))}
+                  />
+                </div>
+                <button type="submit" className="admin-btn admin-btn-primary" disabled={taxSettingsLoading}>Save Tax Rates</button>
+              </form>
+            </div>
+
+            <div className="grid" style={{ gridTemplateColumns: 'minmax(320px, 420px) minmax(0, 1fr)' }}>
+              <div className="admin-card">
+                <h3 style={{ marginBottom: '1rem' }}>{editingPromoId ? 'Edit Promo' : 'Create Promo'}</h3>
+                <form onSubmit={handlePromoSubmit}>
+                  <div className="form-group">
+                    <label className="form-label">Code</label>
+                    <input
+                      required
+                      className="form-input"
+                      placeholder="SUMMER25"
+                      value={promoForm.code}
+                      onChange={(e) => setPromoForm((prev) => ({ ...prev, code: e.target.value.toUpperCase().replace(/\s+/g, '') }))}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Description</label>
+                    <input
+                      className="form-input"
+                      placeholder="Festival campaign"
+                      value={promoForm.description}
+                      onChange={(e) => setPromoForm((prev) => ({ ...prev, description: e.target.value }))}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.7rem' }}>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">Type</label>
+                      <select
+                        className="form-input"
+                        value={promoForm.discountType}
+                        onChange={(e) => setPromoForm((prev) => ({ ...prev, discountType: e.target.value }))}
+                      >
+                        <option value="percentage">Percentage</option>
+                        <option value="flat">Flat INR</option>
+                      </select>
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">Value</label>
+                      <input
+                        required
+                        type="number"
+                        min="1"
+                        className="form-input"
+                        value={promoForm.discountValue}
+                        onChange={(e) => setPromoForm((prev) => ({ ...prev, discountValue: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.7rem' }}>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">Min Order (INR)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        className="form-input"
+                        value={promoForm.minOrderAmount}
+                        onChange={(e) => setPromoForm((prev) => ({ ...prev, minOrderAmount: e.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">Usage Limit</label>
+                      <input
+                        type="number"
+                        min="1"
+                        className="form-input"
+                        placeholder="Unlimited"
+                        value={promoForm.usageLimit}
+                        onChange={(e) => setPromoForm((prev) => ({ ...prev, usageLimit: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Expiry Date</label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={promoForm.expiresAt}
+                      onChange={(e) => setPromoForm((prev) => ({ ...prev, expiresAt: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={promoForm.active}
+                        onChange={(e) => setPromoForm((prev) => ({ ...prev, active: e.target.checked }))}
+                      />
+                      Active
+                    </label>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button type="submit" className="admin-btn admin-btn-primary">
+                      {editingPromoId ? 'Update Promo' : 'Create Promo'}
+                    </button>
+                    {editingPromoId && (
+                      <button type="button" className="admin-btn admin-btn-secondary" onClick={resetPromoForm}>
+                        Cancel Edit
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
+
+              <div className="admin-card" style={{ padding: 0 }}>
+                {promoCodesLoading ? (
+                  <AdminTableSkeleton columns={7} rows={6} />
+                ) : (
+                  <div className="admin-table-container">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Code</th>
+                          <th>Discount</th>
+                          <th>Expiry</th>
+                          <th>Usage</th>
+                          <th>Status</th>
+                          <th>Used</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {promoCodes.map((promo) => {
+                          const isExpired = promo.expiresAt ? new Date(promo.expiresAt) < new Date() : false;
+                          return (
+                            <tr key={promo.id}>
+                              <td>
+                                <strong>{promo.code}</strong>
+                                {promo.description && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{promo.description}</div>}
+                              </td>
+                              <td>
+                                {promo.discountType === 'percentage'
+                                  ? `${promo.discountValue}%`
+                                  : `INR ${Math.round(promo.discountValue || 0)}`}
+                              </td>
+                              <td>{promo.expiresAt ? new Date(promo.expiresAt).toLocaleDateString() : 'No expiry'}</td>
+                              <td>{promo.usageLimit ?? 'Unlimited'}</td>
+                              <td>
+                                <span className={`badge ${promo.active && !isExpired ? 'badge-admin' : 'badge-danger'}`}>
+                                  {promo.active ? (isExpired ? 'EXPIRED' : 'ACTIVE') : 'INACTIVE'}
+                                </span>
+                              </td>
+                              <td>{promo.usedCount || 0}</td>
+                              <td>
+                                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                  <button className="admin-btn admin-btn-secondary" style={{ padding: '0.3rem' }} onClick={() => handlePromoEdit(promo)}>
+                                    <Edit size={14} />
+                                  </button>
+                                  <button className="admin-btn btn-danger" style={{ padding: '0.3rem' }} onClick={() => handlePromoDelete(promo.id)}>
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {promoCodes.length === 0 && (
+                          <tr>
+                            <td colSpan="7" style={{ textAlign: 'center' }}>No promo codes configured.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* USER REVIEWS TAB */}
         {activeTab === 'reviews' && (
           <div>
@@ -1803,6 +2156,17 @@ export default function AdminDashboard() {
                       onChange={e => setEventFormData({ ...eventFormData, vipPrice: e.target.value })}
                     />
                   </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">VIP Seats (comma separated)</label>
+                  <input
+                    className="form-input"
+                    placeholder="Example: A1, A2, B4, C1"
+                    value={eventFormData.vipSeats}
+                    onChange={e => setEventFormData({ ...eventFormData, vipSeats: e.target.value })}
+                  />
+                  <small className="text-muted">These seats will be highlighted and charged with VIP pricing.</small>
                 </div>
 
                 <div style={{ display: 'flex', gap: '1rem' }}>

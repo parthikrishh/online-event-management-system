@@ -87,6 +87,34 @@ export const api = {
         body: JSON.stringify({ reason }),
       }),
   },
+  promos: {
+    list: async () => request("/api/promo-codes"),
+    save: async (payload) =>
+      request("/api/promo-codes", {
+        method: "POST",
+        headers: jsonHeaders,
+        body: JSON.stringify(payload),
+      }),
+    remove: async ({ id }) =>
+      request(`/api/promo-codes/${id}`, {
+        method: "DELETE",
+      }),
+    validate: async ({ code, subtotal, userId }) =>
+      request("/api/promo-codes/validate", {
+        method: "POST",
+        headers: jsonHeaders,
+        body: JSON.stringify({ code, subtotal, userId }),
+      }),
+  },
+  settings: {
+    getTax: async () => request("/api/settings/tax"),
+    saveTax: async ({ cgstRate, sgstRate }) =>
+      request("/api/settings/tax", {
+        method: "POST",
+        headers: jsonHeaders,
+        body: JSON.stringify({ cgstRate, sgstRate }),
+      }),
+  },
   bookings: {
     listAll: async () => request("/api/bookings"),
     listByUser: async ({ userId }) => request(`/api/bookings/user/${encodeURIComponent(userId)}`),
@@ -97,11 +125,17 @@ export const api = {
         headers: jsonHeaders,
         body: JSON.stringify(payload),
       }),
-    processRefund: async ({ bookingId, isApproved }) =>
+    processRefund: async ({ bookingId, refundId, isApproved }) =>
       request(`/api/bookings/${bookingId}/refund`, {
         method: "POST",
         headers: jsonHeaders,
-        body: JSON.stringify({ isApproved }),
+        body: JSON.stringify({ refundId, isApproved }),
+      }),
+    cancel: async ({ bookingId, seatIds, reason }) =>
+      request(`/api/bookings/${bookingId}/cancel`, {
+        method: "POST",
+        headers: jsonHeaders,
+        body: JSON.stringify({ seatIds, reason }),
       }),
     remove: async ({ id }) =>
       request(`/api/bookings/${id}`, {

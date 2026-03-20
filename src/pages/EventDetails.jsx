@@ -37,6 +37,7 @@ export default function EventDetails() {
 
   const fallbackCapacity = event.capacity || 50;
   const remainingSeats = Math.max(0, Number(event.availableCapacity ?? fallbackCapacity));
+  const vipSeatCount = Array.isArray(event.vipSeats) ? event.vipSeats.length : 0;
 
   return (
     <section className="event-details-page">
@@ -47,6 +48,9 @@ export default function EventDetails() {
           <p>{event.description}</p>
           <p><CalendarDays size={16} /> {new Date(event.date).toLocaleDateString()}</p>
           <p><MapPin size={16} /> {event.location}</p>
+          {vipSeatCount > 0 && (
+            <p><strong>VIP</strong>: {vipSeatCount} seats available at INR {event.vipPrice || event.price}</p>
+          )}
           <p className={`event-details-availability ${remainingSeats <= 0 ? 'is-soldout' : ''}`}>
             {remainingSeats <= 0 ? 'Sold out' : `Remaining seats: ${remainingSeats}`}
           </p>

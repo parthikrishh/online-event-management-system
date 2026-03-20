@@ -837,11 +837,33 @@ button {
 }
 
 .seat {
+  position: relative;
   border-radius: 7px;
   border: 1px solid var(--border);
   background: #f4f7fc;
   min-height: 30px;
   font-size: 0.73rem;
+  font-weight: 700;
+}
+
+.seat-label {
+  font-weight: 800;
+}
+
+.seat.vip {
+  border-color: #d6a52a;
+  background: #fff8df;
+  color: #805300;
+}
+
+.seat-vip-tag {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 0.5rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.02em;
 }
 
 .seat-empty {
@@ -860,6 +882,46 @@ button {
   color: #777;
   border-color: #d2d6de;
   background: #e9ecf2;
+}
+
+.seat-legend {
+  display: flex;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.8rem;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.seat-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.seat-legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: #f4f7fc;
+}
+
+.seat-legend-dot.vip {
+  background: #fff8df;
+  border-color: #d6a52a;
+}
+
+.seat-legend-dot.selected {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.seat-legend-dot.booked {
+  background: #e9ecf2;
+  border-color: #d2d6de;
 }
 
 .booking-meta-grid {
@@ -1336,6 +1398,10 @@ th {
     padding: 0.52rem 0.62rem;
   }
 
+  .admin-sidebar-title {
+    display: none;
+  }
+
   .booking-meta-grid {
     grid-template-columns: 1fr;
   }
@@ -1401,6 +1467,53 @@ th {
 
   .modal-actions .btn {
     flex: 1;
+  }
+
+  .modal-content {
+    width: 100%;
+    max-height: 95vh;
+    padding: 0.85rem;
+  }
+
+  .seat-row {
+    grid-template-columns: 20px repeat(10, minmax(0, 1fr));
+    gap: 0.22rem;
+  }
+
+  .seat {
+    min-height: 28px;
+    font-size: 0.68rem;
+  }
+
+  .seat-vip-tag {
+    font-size: 0.44rem;
+    top: 1px;
+    right: 2px;
+  }
+
+  .search-bar {
+    min-height: 44px;
+  }
+
+  .btn,
+  .admin-btn {
+    min-height: 44px;
+  }
+
+  .table-container,
+  .admin-table-container {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .user-dashboard-filters,
+  .admin-actions-grid {
+    width: 100%;
+  }
+
+  .admin-actions-grid > * {
+    flex: 1 1 100%;
   }
 
   .report-actions {

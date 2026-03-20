@@ -27,6 +27,18 @@
       "location": "Bengaluru Arena, Bengaluru",
       "price": 1499,
       "vipPrice": 2499,
+      "vipSeats": [
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5"
+      ],
       "category": "Music Concerts",
       "capacity": 50,
       "availableCapacity": 50,
@@ -46,6 +58,14 @@
       "location": "Tech Convention Center, Chennai",
       "price": 999,
       "vipPrice": 1799,
+      "vipSeats": [
+        "A1",
+        "A2",
+        "A3",
+        "B1",
+        "B2",
+        "B3"
+      ],
       "category": "Technology",
       "capacity": 49,
       "availableCapacity": 49,
@@ -65,6 +85,12 @@
       "location": "Riverside Grounds, Hyderabad",
       "price": 499,
       "vipPrice": 899,
+      "vipSeats": [
+        "A1",
+        "A2",
+        "B1",
+        "B2"
+      ],
       "category": "Food Festival",
       "capacity": 100,
       "availableCapacity": 100,
@@ -79,6 +105,42 @@
   "bookings": [],
   "refunds": [],
   "reviews": [],
+  "settings": {
+    "tax": {
+      "cgstRate": 9,
+      "sgstRate": 9
+    }
+  },
+  "promoCodes": [
+    {
+      "id": "promo_welcome10",
+      "code": "WELCOME10",
+      "description": "Welcome discount",
+      "discountType": "percentage",
+      "discountValue": 10,
+      "minOrderAmount": 0,
+      "usageLimit": 500,
+      "usedCount": 0,
+      "active": true,
+      "expiresAt": "2027-12-31T23:59:59.000Z",
+      "createdAt": "2026-03-20T00:00:00.000Z",
+      "updatedAt": "2026-03-20T00:00:00.000Z"
+    },
+    {
+      "id": "promo_flat150",
+      "code": "FLAT150",
+      "description": "Flat INR 150 off",
+      "discountType": "flat",
+      "discountValue": 150,
+      "minOrderAmount": 1000,
+      "usageLimit": 200,
+      "usedCount": 0,
+      "active": true,
+      "expiresAt": "2027-12-31T23:59:59.000Z",
+      "createdAt": "2026-03-20T00:00:00.000Z",
+      "updatedAt": "2026-03-20T00:00:00.000Z"
+    }
+  ],
   "logs": [
     {
       "id": "log_1773989229906_bnjo",

@@ -8,12 +8,12 @@ const QRCodeCanvas = lazy(() => import('qrcode.react').then((module) => ({ defau
 
 export default function UserDashboard({ user }) {
   const { showToast } = useToast();
-  const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [bookingSearch, setBookingSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' or 'profile'
-  const [selectedBookingForRefund, setSelectedBookingForRefund] = useState(null);
-  const [refundForm, setRefundForm] = useState({ reason: '', bankDetails: '' });
+  const [selectedBookingForCancellation, setSelectedBookingForCancellation] = useState(null);
+  const [cancellationForm, setCancellationForm] = useState({ reason: '', mode: 'full', seatIds: [] });
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [profileForm, setProfileForm] = useState({
@@ -30,7 +30,7 @@ export default function UserDashboard({ user }) {
   const userBookingsData = useQuery(api.bookings.listByUser, { userId: user?.id || "" });
   const eventsData = useQuery(api.events.list);
   const reviewsData = useQuery(api.misc.listReviews);
-  const refundMutation = useMutation(api.bookings.processRefund);
+  const cancelBookingMutation = useMutation(api.bookings.cancel);
   const addReviewMutation = useMutation(api.misc.addReview);
   const deleteBookingMutation = useMutation(api.bookings.remove);
   const updateProfileMutation = useMutation(api.users.update);
@@ -50,31 +50,55 @@ export default function UserDashboard({ user }) {
   }, [bookings, bookingSearch, statusFilter]);
 
 
-  const handleOpenRefund = (booking) => {
-    setSelectedBookingForRefund(booking);
-    setRefundForm({ reason: '', bankDetails: '' });
-    setIsRefundModalOpen(true);
+  const getActiveSeats = (booking) => {
+    if (Array.isArray(booking.activeSeats)) return booking.activeSeats;
+    if (!Array.isArray(booking.selectedSeats)) return [];
+    const cancelled = new Set(booking.cancelledSeats || []);
+    return booking.selectedSeats.filter((seat) => !cancelled.has(seat));
   };
 
-  const handleRefundSubmit = async (e) => {
+  const handleOpenCancellation = (booking) => {
+    const activeSeats = getActiveSeats(booking);
+    setSelectedBookingForCancellation(booking);
+    setCancellationForm({
+      reason: '',
+      mode: 'full',
+      seatIds: [...activeSeats],
+    });
+    setIsCancelModalOpen(true);
+  };
+
+  const handleCancellationSubmit = async (e) => {
     e.preventDefault();
-    try {
-      await refundMutation({
-        bookingId: selectedBookingForRefund.id,
-        isApproved: true 
-      });
-      showToast("Refund processed successfully.", "success");
-    } catch (err) {
-      console.error("Refund failed", err);
-      showToast("Refund failed. Please try again.", "error");
+
+    const booking = selectedBookingForCancellation;
+    if (!booking) return;
+
+    const activeSeats = getActiveSeats(booking);
+    const seatIds = cancellationForm.mode === 'full' ? activeSeats : cancellationForm.seatIds;
+
+    if (!seatIds.length) {
+      showToast('Select at least one seat to cancel.', 'warning');
+      return;
     }
-    setIsRefundModalOpen(false);
+
+    try {
+      const result = await cancelBookingMutation({
+        bookingId: booking.id,
+        seatIds,
+        reason: cancellationForm.reason || 'User requested cancellation',
+      });
+      const amount = result?.refund?.amount || 0;
+      showToast(`Refund request submitted (INR ${amount}). Waiting for admin approval.`, 'success');
+    } catch (err) {
+      console.error('Cancellation failed', err);
+      showToast('Cancellation failed. Please try again.', 'error');
+    }
+    setIsCancelModalOpen(false);
   };
 
   const handleCancelBooking = (booking) => {
-    if (confirm("Are you sure you want to cancel this booking? This will initiate a refund request.")) {
-      handleOpenRefund(booking);
-    }
+    handleOpenCancellation(booking);
   };
 
   const handleDeleteBooking = async (bookingId) => {
@@ -127,7 +151,9 @@ export default function UserDashboard({ user }) {
     const statusText = booking.status ? booking.status.replace(/_/g, ' ').toUpperCase() : 'BOOKED';
     const transactionId = booking.transactionId || `TXN-${booking.id?.slice(-8) || booking.billId?.slice(-8) || 'UNKNOWN'}`;
     const paymentStatus = (booking.paymentStatus || 'paid').toUpperCase();
-    const seatText = booking.selectedSeats?.length ? booking.selectedSeats.join(', ') : 'Not allocated';
+    const activeSeats = booking.activeSeats?.length ? booking.activeSeats : (booking.selectedSeats || []);
+    const cancelledSeats = booking.cancelledSeats || [];
+    const seatText = activeSeats.length ? activeSeats.join(', ') : 'Not allocated';
 
     doc.setFillColor(255, 107, 0);
     doc.rect(0, 0, 210, 28, 'F');
@@ -178,29 +204,50 @@ export default function UserDashboard({ user }) {
     drawRow('Bill ID', booking.billId || 'N/A', 140);
     drawRow('Transaction ID', transactionId, 147);
     drawRow('Booked On', new Date(booking.bookingDate).toLocaleString(), 154);
-    drawRow('Payment Status', paymentStatus, 161);
-    drawRow('Ticket Status', statusText, 168);
+    drawRow('Payment Method', (booking.paymentMethod || 'UPI').toUpperCase(), 161);
+    drawRow('Payment Status', paymentStatus, 168);
+    drawRow('Ticket Status', statusText, 175);
+    if (cancelledSeats.length > 0) {
+      doc.setTextColor(214, 59, 59);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`CANCELLED SEATS: ${cancelledSeats.join(', ')}`, 16, 182);
+      doc.setDrawColor(214, 59, 59);
+      doc.line(16, 183, 175, 183);
+    }
 
     doc.setFillColor(255, 247, 239);
     doc.setDrawColor(255, 214, 183);
-    doc.rect(14, 176, 182, 46, 'FD');
+    doc.rect(14, 188, 182, 52, 'FD');
 
     const base = Number(booking.originalTotal || booking.discountedAmount || booking.totalAmount || 0);
-    const discountAmount = Number(booking.discountUsed ? base * booking.discountUsed : 0);
-    const taxable = Number(booking.discountedAmount || base - discountAmount || 0);
+    const discountAmount = Number(booking.discountAmount || (booking.discountUsed ? base * booking.discountUsed : 0));
+    const taxable = Number(booking.discountedAmount || Math.max(0, base - discountAmount));
     const cgst = Number(booking.cgst || 0);
     const sgst = Number(booking.sgst || 0);
+    const cgstRate = Number(booking.cgstRate || 9);
+    const sgstRate = Number(booking.sgstRate || 9);
     const total = Number(booking.totalAmount || taxable + cgst + sgst);
+    const totalRefund = Number(booking.totalRefundAmount || 0);
 
-    drawRow('Subtotal', `INR ${base.toFixed(2)}`, 187);
-    drawRow('Discount', `- INR ${discountAmount.toFixed(2)}`, 194);
-    drawRow('CGST (9%)', `INR ${cgst.toFixed(2)}`, 201);
-    drawRow('SGST (9%)', `INR ${sgst.toFixed(2)}`, 208);
+    drawRow('Subtotal', `INR ${Math.round(base)}`, 199);
+    drawRow('Discount', `- INR ${Math.round(discountAmount)}`, 206);
+    drawRow(`CGST (${cgstRate}%)`, `INR ${Math.round(cgst)}`, 213);
+    drawRow(`SGST (${sgstRate}%)`, `INR ${Math.round(sgst)}`, 220);
+    if (totalRefund > 0) {
+      drawRow('Refunded', `INR ${Math.round(totalRefund)}`, 227);
+    }
 
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(186, 73, 0);
     doc.setFontSize(12);
-    doc.text(`TOTAL: INR ${total.toFixed(2)}`, 16, 218);
+    doc.text(`TOTAL PAYABLE: INR ${Math.round(total)}`, 16, 236);
+
+    if (['fully_cancelled', 'partially_cancelled'].includes(booking.status)) {
+      doc.setTextColor(214, 59, 59);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('CANCELLED', 194, 18, { align: 'right' });
+    }
 
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(8);
@@ -309,9 +356,10 @@ export default function UserDashboard({ user }) {
                 <option value="all">All Status</option>
                 <option value="booked">Booked</option>
                 <option value="checked-in">Checked In</option>
-                <option value="cancelled">Cancelled</option>
                 <option value="refund_requested">Refund Requested</option>
-                <option value="refunded">Refunded</option>
+                <option value="partially_cancelled">Partially Cancelled</option>
+                <option value="fully_cancelled">Fully Cancelled</option>
+                <option value="payment_failed">Payment Failed</option>
               </select>
               <div className="search-bar" style={{ maxWidth: '300px', marginBottom: 0, flex: '2 1 200px' }}>
                 <Search size={18} />
@@ -340,19 +388,24 @@ export default function UserDashboard({ user }) {
                       <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block' }}>
                         Booked on {new Date(booking.bookingDate).toLocaleDateString()}
                       </span>
-                      {booking.status === 'cancelled' && (
+                      {booking.status === 'fully_cancelled' && (
                         <span style={{ display: 'inline-block', marginTop: '0.5rem', padding: '0.2rem 0.5rem', background: 'rgba(239, 68, 68, 0.2)', color: 'var(--danger)', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                          CANCELLED
+                          FULLY CANCELLED
+                        </span>
+                      )}
+                      {booking.status === 'partially_cancelled' && (
+                        <span style={{ display: 'inline-block', marginTop: '0.5rem', padding: '0.2rem 0.5rem', background: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                          PARTIALLY CANCELLED
                         </span>
                       )}
                       {booking.status === 'refund_requested' && (
                         <span style={{ display: 'inline-block', marginTop: '0.5rem', padding: '0.2rem 0.5rem', background: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                          REFUND PENDING
+                          REFUND REQUESTED
                         </span>
                       )}
-                      {booking.status === 'refunded' && (
-                        <span style={{ display: 'inline-block', marginTop: '0.5rem', padding: '0.2rem 0.5rem', background: 'rgba(16, 185, 129, 0.2)', color: 'var(--success)', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                          REFUNDED
+                      {booking.status === 'payment_failed' && (
+                        <span style={{ display: 'inline-block', marginTop: '0.5rem', padding: '0.2rem 0.5rem', background: 'rgba(239, 68, 68, 0.2)', color: 'var(--danger)', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                          PAYMENT FAILED
                         </span>
                       )}
                     </div>
@@ -381,7 +434,13 @@ export default function UserDashboard({ user }) {
                     {booking.selectedSeats && booking.selectedSeats.length > 0 && (
                       <div className="receipt-row">
                         <span style={{ color: 'var(--text-muted)' }}>Seats:</span>
-                        <span>{booking.selectedSeats.join(', ')}</span>
+                        <span>{(booking.activeSeats || booking.selectedSeats).join(', ')}</span>
+                      </div>
+                    )}
+                    {booking.cancelledSeats && booking.cancelledSeats.length > 0 && (
+                      <div className="receipt-row">
+                        <span style={{ color: 'var(--text-muted)' }}>Cancelled Seats:</span>
+                        <span style={{ color: 'var(--danger)', textDecoration: 'line-through' }}>{booking.cancelledSeats.join(', ')}</span>
                       </div>
                     )}
                     <div className="receipt-row">
@@ -391,8 +450,14 @@ export default function UserDashboard({ user }) {
 
                     <div className="receipt-total">
                       <span>Total Amount</span>
-                      <span style={{ color: 'var(--primary)' }}>INR {booking.totalAmount}</span>
+                      <span style={{ color: 'var(--primary)' }}>INR {Math.round(booking.totalAmount || 0)}</span>
                     </div>
+                    {Number(booking.totalRefundAmount || 0) > 0 && (
+                      <div className="receipt-row">
+                        <span style={{ color: 'var(--text-muted)' }}>Total Refund</span>
+                        <span style={{ color: 'var(--danger)', fontWeight: 700 }}>INR {Math.round(booking.totalRefundAmount)}</span>
+                      </div>
+                    )}
 
                     <div style={{ margin: '2rem 0 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                       <div style={{ background: 'white', padding: '12px', borderRadius: '8px', marginBottom: '1rem', display: 'inline-block', boxShadow: '0 4px 20px rgba(255, 85, 0, 0.2)' }}>
@@ -410,7 +475,7 @@ export default function UserDashboard({ user }) {
                           Scan at venue for quick entry
                         </p>
                       )}
-                      {(booking.status === 'cancelled' || booking.status === 'refunded') && (
+                      {(booking.status === 'fully_cancelled' || booking.status === 'payment_failed') && (
                         <p style={{ color: 'var(--danger)', fontSize: '0.85rem', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase' }}>
                           Ticket Revoked
                         </p>
@@ -436,14 +501,14 @@ export default function UserDashboard({ user }) {
                       </button>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                      {booking.status === 'booked' && (
+                      {(booking.status === 'booked' || booking.status === 'partially_cancelled') && (
                         <div style={{ display: 'flex', gap: '0.5rem', flex: 2 }}>
                           <button
                             className="btn btn-danger"
                             style={{ flex: 1, padding: '0.5rem' }}
                             onClick={() => handleCancelBooking(booking)}
                           >
-                            Cancel & Refund
+                            Cancel Tickets
                           </button>
                         </div>
                       )}
@@ -524,50 +589,105 @@ export default function UserDashboard({ user }) {
             <div className="card" style={{ textAlign: 'center' }}>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Total Spent</p>
               <h4 style={{ fontSize: '2rem', color: 'var(--secondary)' }}>
-                INR {bookings.filter(b => b.status === 'booked' || b.status === 'checked-in').reduce((sum, b) => sum + b.totalAmount, 0).toFixed(2)}
+                INR {Math.round(bookings.filter(b => ['booked', 'checked-in', 'partially_cancelled', 'refund_requested'].includes(b.status)).reduce((sum, b) => sum + (b.totalAmount || 0), 0))}
               </h4>
             </div>
           </div>
         </div>
       )}
 
-      {isRefundModalOpen && (
+      {isCancelModalOpen && (
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '450px' }}>
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
               <div style={{ width: '60px', height: '60px', background: 'rgba(255, 49, 82, 0.1)', borderRadius: '0px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
                 <RefreshCcw size={30} color="var(--primary)" />
               </div>
-              <h2 style={{ marginBottom: '0.5rem' }}>Request Refund</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Please provide details for your refund of <strong>INR {selectedBookingForRefund?.totalAmount}</strong> for <strong>{selectedBookingForRefund?.eventName}</strong>.</p>
+              <h2 style={{ marginBottom: '0.5rem' }}>Cancel Ticket</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                Choose full or partial cancellation for <strong>{selectedBookingForCancellation?.eventName}</strong>.
+              </p>
             </div>
 
-            <form onSubmit={handleRefundSubmit}>
+            <form onSubmit={handleCancellationSubmit}>
               <div className="form-group">
-                <label className="form-label">Reason for Refund</label>
+                <label className="form-label">Cancellation Type</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ flex: 1, borderColor: cancellationForm.mode === 'full' ? 'var(--primary)' : 'var(--border)' }}
+                    onClick={() => setCancellationForm((prev) => ({
+                      ...prev,
+                      mode: 'full',
+                      seatIds: [...getActiveSeats(selectedBookingForCancellation || {})],
+                    }))}
+                  >
+                    Full
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ flex: 1, borderColor: cancellationForm.mode === 'partial' ? 'var(--primary)' : 'var(--border)' }}
+                    onClick={() => setCancellationForm((prev) => ({ ...prev, mode: 'partial', seatIds: [] }))}
+                  >
+                    Partial
+                  </button>
+                </div>
+              </div>
+
+              {cancellationForm.mode === 'partial' && (
+                <div className="form-group">
+                  <label className="form-label">Select Seats To Cancel</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
+                    {getActiveSeats(selectedBookingForCancellation || {}).map((seat) => {
+                      const isActive = cancellationForm.seatIds.includes(seat);
+                      return (
+                        <button
+                          type="button"
+                          key={seat}
+                          className="btn btn-secondary"
+                          style={{
+                            minWidth: '52px',
+                            borderColor: isActive ? 'var(--primary)' : 'var(--border)',
+                            background: isActive ? 'var(--primary-100)' : 'var(--surface)',
+                          }}
+                          onClick={() => setCancellationForm((prev) => ({
+                            ...prev,
+                            seatIds: prev.seatIds.includes(seat)
+                              ? prev.seatIds.filter((item) => item !== seat)
+                              : [...prev.seatIds, seat],
+                          }))}
+                        >
+                          {seat}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="form-group">
+                <label className="form-label">Reason</label>
                 <textarea
-                  required className="form-input" rows="3"
-                  placeholder="e.g. Health issues, flight cancelled..."
-                  value={refundForm.reason}
-                  onChange={e => setRefundForm({ ...refundForm, reason: e.target.value })}
+                  required
+                  className="form-input"
+                  rows="3"
+                  placeholder="e.g. schedule conflict"
+                  value={cancellationForm.reason}
+                  onChange={e => setCancellationForm({ ...cancellationForm, reason: e.target.value })}
                 ></textarea>
               </div>
-              <div className="form-group">
-                <label className="form-label">Bank Account / Payment Details</label>
-                <textarea
-                  required className="form-input" rows="3"
-                  placeholder="Enter your bank name, A/C number or UPI ID for refund"
-                  value={refundForm.bankDetails}
-                  onChange={e => setRefundForm({ ...refundForm, bankDetails: e.target.value })}
-                ></textarea>
-              </div>
+
               <div style={{ padding: '1rem', background: 'rgba(255, 49, 82, 0.05)', borderRadius: '0px', display: 'flex', gap: '0.75rem', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
                 <Info size={20} color="var(--primary)" style={{ marginTop: '2px' }} />
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Refunds are processed manually by our admin within 3-5 business days.</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                  Refund includes proportional discount and tax adjustments for the cancelled seats.
+                </p>
               </div>
               <div style={{ display: 'flex', gap: '1rem' }}>
-                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setIsRefundModalOpen(false)}>Back</button>
-                <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>Submit Request</button>
+                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setIsCancelModalOpen(false)}>Back</button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>Confirm Cancellation</button>
               </div>
             </form>
           </div>

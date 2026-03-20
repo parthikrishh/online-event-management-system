@@ -22,15 +22,16 @@ export default function Home({ user }) {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSeats, setSelectedSeats] = useState([]);
-  const [paymentMethod] = useState('upi');
+  const [paymentMethod, setPaymentMethod] = useState('upi');
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [modalEvent, setModalEvent] = useState(null);
   const [promoCode, setPromoCode] = useState('');
-  const [discount, setDiscount] = useState(0);
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [paymentState, setPaymentState] = useState({ processing: false, status: null, transactionId: null });
 
   const { data: eventsData, error: eventsError } = useQueryState(api.events.list);
+  const taxSettings = useQuery(api.settings.getTax);
   const secureBookMutation = useMutation(api.bookings.secureBook);
-  const userBookingsData = useQuery(api.bookings.listByUser, { userId: user?.id || '' });
   const bookedSeatsData = useQuery(api.bookings.getBookedSeats, modalEvent ? { eventId: modalEvent.id } : 'skip');
 
   const events = useMemo(() => eventsData || [], [eventsData]);
@@ -92,6 +93,23 @@ export default function Home({ user }) {
   };
 
   const seatCapacity = Math.max(1, Math.min(500, Number(modalEvent?.capacity || 500)));
+  const cgstRate = Number(taxSettings?.cgstRate ?? 9);
+  const sgstRate = Number(taxSettings?.sgstRate ?? 9);
+  const vipSeatSet = useMemo(() => {
+    const configured = Array.isArray(modalEvent?.vipSeats)
+      ? modalEvent.vipSeats.map((seat) => String(seat).toUpperCase())
+      : [];
+    return new Set(configured);
+  }, [modalEvent]);
+
+  const isVipSeat = (seatId) => {
+    const normalized = String(seatId).toUpperCase();
+    if (vipSeatSet.size > 0) {
+      return vipSeatSet.has(normalized);
+    }
+    return normalized.startsWith('A') || normalized.startsWith('B');
+  };
+
   const seatRows = useMemo(() => {
     const rowCount = Math.ceil(seatCapacity / seatCols.length);
     return Array.from({ length: rowCount }, (_, idx) => getRowLabel(idx));
@@ -101,6 +119,7 @@ export default function Home({ user }) {
     if (bookedSeats.includes(seatId)) return;
 
     if (selectedSeats.includes(seatId)) {
+      setAppliedPromo(null);
       setSelectedSeats(selectedSeats.filter((seat) => seat !== seatId));
       return;
     }
@@ -110,6 +129,7 @@ export default function Home({ user }) {
       return;
     }
 
+    setAppliedPromo(null);
     setSelectedSeats([...selectedSeats, seatId]);
   };
 
@@ -137,7 +157,9 @@ export default function Home({ user }) {
     setModalEvent(event);
     setSelectedSeats([]);
     setPromoCode('');
-    setDiscount(0);
+    setAppliedPromo(null);
+    setPaymentMethod('upi');
+    setPaymentState({ processing: false, status: null, transactionId: null });
     setBookingSuccess(false);
     setIsModalOpen(true);
   };
@@ -147,63 +169,53 @@ export default function Home({ user }) {
 
     let subtotal = 0;
     selectedSeats.forEach((seat) => {
-      if (seat.startsWith('A') || seat.startsWith('B')) {
+      if (isVipSeat(seat)) {
         subtotal += modalEvent.vipPrice || modalEvent.price * 1.5;
       } else {
         subtotal += modalEvent.price;
       }
     });
 
-    const discountAmount = subtotal * discount;
+    const discountAmount = Math.min(subtotal, Number(appliedPromo?.discountAmount || 0));
     const afterDiscount = subtotal - discountAmount;
-    const cgst = afterDiscount * 0.09;
-    const sgst = afterDiscount * 0.09;
-    const total = afterDiscount + cgst + sgst;
+    const cgst = afterDiscount * (cgstRate / 100);
+    const sgst = afterDiscount * (sgstRate / 100);
+    const total = Math.round(afterDiscount + cgst + sgst);
 
     return { subtotal, discountAmount, afterDiscount, cgst, sgst, total };
   };
 
-  const PROMO_CODES = {
-    WELCOME20: { rate: 0.2, once: false },
-    EVENT50: { rate: 0.5, once: false },
-    OEMS25: { rate: 0.25, once: false },
-    FESTIVAL10: { rate: 0.1, once: false },
-    FIRSTBOOK: { rate: 0.3, once: true },
-    LOYALTY50: { rate: 0.5, once: true },
-  };
-
-  const applyPromo = () => {
+  const applyPromo = async () => {
     const code = promoCode.trim().toUpperCase();
-    const userBookings = userBookingsData || [];
-
-    if (!PROMO_CODES[code]) {
-      setDiscount(0);
-      if (code) showToast('Invalid promo code. Please try again.', 'error');
+    if (!code) {
+      setAppliedPromo(null);
+      showToast('Enter a promo code to apply.', 'info');
       return;
     }
 
-    const promo = PROMO_CODES[code];
-
-    if (code === 'FIRSTBOOK' && userBookings.length > 0) {
-      showToast('This code is only for new users on their first booking.', 'warning');
-      setDiscount(0);
+    if (selectedSeats.length === 0) {
+      showToast('Select seats before applying a promo code.', 'warning');
       return;
     }
 
-    if (code === 'LOYALTY50' && userBookings.length < 5) {
-      showToast(`You need at least 5 previous bookings. Current: ${userBookings.length}`, 'info');
-      setDiscount(0);
-      return;
-    }
+    try {
+      const subtotal = selectedSeats.reduce((sum, seat) => {
+        return sum + (isVipSeat(seat) ? (modalEvent.vipPrice || modalEvent.price * 1.5) : modalEvent.price);
+      }, 0);
 
-    if (promo.once && userBookings.some((booking) => booking.promoCode === code)) {
-      showToast('You already used this one-time promo code.', 'warning');
-      setDiscount(0);
-      return;
+      const validation = await api.promos.validate({ code, subtotal, userId: user?.id });
+      setAppliedPromo({
+        code: validation.promoCode,
+        discountAmount: Number(validation.discountAmount || 0),
+        discountType: validation.discountType,
+        discountValue: validation.discountValue,
+      });
+      showToast(validation.message || 'Promo applied.', 'success');
+    } catch (err) {
+      setAppliedPromo(null);
+      const message = err?.message ? String(err.message).replace(/^"|"$/g, '') : 'Invalid promo code.';
+      showToast(message, 'error');
     }
-
-    setDiscount(promo.rate);
-    showToast(`Applied ${promo.rate * 100}% discount`, 'success');
   };
 
   const submitBooking = async (event) => {
@@ -215,11 +227,21 @@ export default function Home({ user }) {
       return;
     }
 
+    setPaymentState({ processing: true, status: null, transactionId: null });
+    const simulatedSuccess = Math.random() >= 0.25;
+    const transactionId = `TXN-${Date.now().toString().slice(-8)}${Math.floor(Math.random() * 90 + 10)}`;
+
+    if (!simulatedSuccess) {
+      setPaymentState({ processing: false, status: 'failed', transactionId });
+      showToast('Payment failed. Please retry with the same or another method.', 'error');
+      return;
+    }
+
     const pricing = getPricing();
     const bookingId = Date.now().toString();
     const dataForBooking = {
       id: bookingId,
-      transactionId: `TXN-${bookingId.slice(-8)}`,
+      transactionId,
       eventId: modalEvent.id,
       userId: user.id,
       eventName: modalEvent.name,
@@ -228,8 +250,9 @@ export default function Home({ user }) {
       numTickets: selectedSeats.length,
       selectedSeats,
       ticketPrice: modalEvent.price,
-      promoCode: promoCode.trim().toUpperCase() || null,
-      discountUsed: discount,
+      vipPrice: modalEvent.vipPrice,
+      vipSeats: Array.from(vipSeatSet),
+      promoCode: appliedPromo?.code || null,
       originalTotal: pricing.subtotal,
       discountedAmount: pricing.afterDiscount,
       cgst: pricing.cgst,
@@ -244,6 +267,7 @@ export default function Home({ user }) {
 
     try {
       await secureBookMutation(dataForBooking);
+      setPaymentState({ processing: false, status: 'success', transactionId });
       setBookingSuccess(true);
       showToast('Booking confirmed successfully.', 'success');
       setTimeout(() => {
@@ -252,6 +276,7 @@ export default function Home({ user }) {
       }, 1200);
     } catch (err) {
       console.warn('API booking failed', err);
+      setPaymentState({ processing: false, status: 'failed', transactionId });
       showToast('Booking failed. Please retry in a moment.', 'error');
     }
   };
@@ -409,6 +434,12 @@ export default function Home({ user }) {
               <form onSubmit={submitBooking}>
                 <div className="seat-map-wrap">
                   <p className="seat-stage">STAGE</p>
+                  <div className="seat-legend">
+                    <span><span className="seat-legend-dot normal"></span>Normal</span>
+                    <span><span className="seat-legend-dot vip"></span>VIP</span>
+                    <span><span className="seat-legend-dot selected"></span>Selected</span>
+                    <span><span className="seat-legend-dot booked"></span>Booked</span>
+                  </div>
                   {seatRows.map((row) => (
                     <div className="seat-row" key={row}>
                       <span className="seat-row-label">{row}</span>
@@ -420,16 +451,19 @@ export default function Home({ user }) {
                         }
                         const isBooked = bookedSeats.includes(seatId);
                         const isSelected = selectedSeats.includes(seatId);
+                        const isVip = isVipSeat(seatId);
 
                         return (
                           <button
                             type="button"
-                            className={`seat ${isBooked ? 'booked' : ''} ${isSelected ? 'selected' : ''}`}
+                            className={`seat ${isVip ? 'vip' : ''} ${isBooked ? 'booked' : ''} ${isSelected ? 'selected' : ''}`}
                             key={seatId}
                             onClick={() => toggleSeat(seatId)}
                             disabled={isBooked}
+                            title={isVip ? `VIP Seat (${modalEvent.vipPrice || modalEvent.price})` : `Regular Seat (${modalEvent.price})`}
                           >
-                            {col}
+                            <span className="seat-label">{col}</span>
+                            {isVip && <span className="seat-vip-tag">VIP</span>}
                           </button>
                         );
                       })}
@@ -445,24 +479,64 @@ export default function Home({ user }) {
                         type="text"
                         className="form-input"
                         value={promoCode}
-                        onChange={(event) => setPromoCode(event.target.value)}
-                        placeholder="Use FIRSTBOOK, OEMS25..."
+                        onChange={(event) => {
+                          setPromoCode(event.target.value);
+                          setAppliedPromo(null);
+                        }}
+                        placeholder="Enter your promo code"
                       />
                       <button type="button" className="btn btn-secondary" onClick={applyPromo}>Apply</button>
+                    </div>
+                    {appliedPromo?.code && (
+                      <small className="text-muted" style={{ display: 'block', marginTop: '0.45rem' }}>
+                        Applied: {appliedPromo.code} (INR {Math.round(appliedPromo.discountAmount)} off)
+                      </small>
+                    )}
+                    <div className="form-group" style={{ marginTop: '0.9rem', marginBottom: 0 }}>
+                      <label className="form-label">Payment method</label>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {[
+                          { value: 'upi', label: 'UPI' },
+                          { value: 'credit_card', label: 'Credit Card' },
+                          { value: 'debit_card', label: 'Debit Card' },
+                        ].map((method) => (
+                          <button
+                            key={method.value}
+                            type="button"
+                            className="btn btn-secondary"
+                            style={{
+                              borderColor: paymentMethod === method.value ? 'var(--primary)' : 'var(--border)',
+                              color: paymentMethod === method.value ? 'var(--primary)' : 'var(--text-main)',
+                            }}
+                            onClick={() => setPaymentMethod(method.value)}
+                          >
+                            {method.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                   <div className="booking-summary">
                     <div><span>Seats</span><strong>{selectedSeats.length}</strong></div>
-                    <div><span>Subtotal</span><strong>INR {pricing.subtotal.toFixed(2)}</strong></div>
-                    <div><span>Discount</span><strong>- INR {pricing.discountAmount.toFixed(2)}</strong></div>
-                    <div><span>CGST + SGST</span><strong>INR {(pricing.cgst + pricing.sgst).toFixed(2)}</strong></div>
-                    <div className="booking-total"><span>Total</span><strong>INR {pricing.total.toFixed(2)}</strong></div>
+                    <div><span>Subtotal</span><strong>INR {Math.round(pricing.subtotal)}</strong></div>
+                    <div><span>Discount</span><strong>- INR {Math.round(pricing.discountAmount)}</strong></div>
+                    <div><span>CGST ({cgstRate}%)</span><strong>INR {Math.round(pricing.cgst)}</strong></div>
+                    <div><span>SGST ({sgstRate}%)</span><strong>INR {Math.round(pricing.sgst)}</strong></div>
+                    <div className="booking-total"><span>Total (Rounded)</span><strong>INR {Math.round(pricing.total)}</strong></div>
+                    {paymentState.status === 'failed' && (
+                      <div><span>Payment</span><strong style={{ color: 'var(--danger)' }}>Failed</strong></div>
+                    )}
+                    {paymentState.transactionId && (
+                      <div><span>Txn ID</span><strong>{paymentState.transactionId}</strong></div>
+                    )}
                   </div>
                 </div>
 
                 <div className="modal-actions">
                   <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary" disabled={!selectedSeats.length}>Pay & Confirm</button>
+                  <button type="submit" className="btn btn-primary" disabled={!selectedSeats.length || paymentState.processing}>
+                    {paymentState.processing ? 'Processing...' : 'Pay & Confirm'}
+                  </button>
                 </div>
               </form>
             )}
