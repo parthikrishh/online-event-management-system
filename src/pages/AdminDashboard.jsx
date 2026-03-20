@@ -779,6 +779,17 @@ export default function AdminDashboard() {
   const pagedBookings = sortedBookings.slice((safeBookingPage - 1) * pageSize, safeBookingPage * pageSize);
   const pagedUsers = sortedUsers.slice((safeUserPage - 1) * pageSize, safeUserPage * pageSize);
 
+  const scanStatusMeta = {
+    success: { tone: 'ok', title: 'Valid Ticket', message: 'Ticket verified and attendee checked in.' },
+    already_checked_in: { tone: 'error', title: 'Already Used', message: 'This ticket was already used for entry.' },
+    not_found: { tone: 'warn', title: 'Ticket Not Found', message: 'Bill ID was not found in the system.' },
+    invalid_status: { tone: 'error', title: 'Invalid Ticket State', message: 'Ticket is cancelled/refunded or not valid for entry.' },
+    not_today: { tone: 'warn', title: 'Date Mismatch', message: 'Entry is allowed only on the official event date.' },
+    event_mismatch: { tone: 'error', title: 'Event Mismatch', message: 'Ticket belongs to a different event.' },
+    invalid: { tone: 'error', title: 'Scan Failed', message: 'Unable to validate ticket. Try again.' },
+  };
+  const currentScanStatus = checkInResult ? (scanStatusMeta[checkInResult] || scanStatusMeta.invalid) : null;
+
 
 
   return (
@@ -1439,140 +1450,125 @@ export default function AdminDashboard() {
 
         {/* SCAN / CHECK-IN TAB */}
         {activeTab === 'scan' && (
-          <div style={{ maxWidth: 780, margin: '0 auto', textAlign: 'center' }}>
-            <div className="flex-between" style={{ justifyContent: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ marginBottom: 0 }}>Gate Scan Console</h2>
+          <div className="scan-console">
+            <div className="scan-console__header">
+              <div>
+                <h2 style={{ marginBottom: '0.2rem' }}>Gate Scan Console</h2>
+                <p style={{ color: 'var(--text-muted)', margin: 0 }}>Fast entry validation with clear status feedback.</p>
+              </div>
+              <button className="admin-btn admin-btn-secondary" onClick={() => {
+                const data = bookings.filter(b => b.status === 'checked-in').map(b => ({
+                  'Bill ID': b.billId,
+                  'Name': b.userName,
+                  'Event': b.eventName,
+                  'Tickets': b.numTickets,
+                  'Date': new Date(b.bookingDate).toLocaleDateString()
+                }));
+                const ws = XLSX.utils.json_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Checked In");
+                XLSX.writeFile(wb, "CheckedIn_Report.xlsx");
+              }}>
+                <Download size={16} /> Export Checked-in
+              </button>
             </div>
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginBottom: '2rem' }}>
-              <div className="admin-card" style={{ padding: '1rem 2rem', borderBottom: '3px solid var(--success)' }}>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>Currently Inside</p>
-                <h3 style={{ margin: 0 }}>{bookings.filter(b => b.status === 'checked-in').reduce((sum, b) => sum + (b.numTickets || 1), 0)} Attendees</h3>
+
+            <div className="scan-console__stats">
+              <div className="scan-kpi">
+                <p>Currently Inside</p>
+                <h3>{bookings.filter(b => b.status === 'checked-in').reduce((sum, b) => sum + (b.numTickets || 1), 0)}</h3>
+              </div>
+              <div className="scan-kpi">
+                <p>Scans Today</p>
+                <h3>{bookings.filter((b) => b.status === 'checked-in' && b.checkInDate && b.checkInDate.slice(0, 10) === new Date().toISOString().slice(0, 10)).length}</h3>
               </div>
             </div>
-            <div className="admin-card">
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-                <button className="admin-btn admin-btn-secondary" style={{ fontSize: '0.8rem', padding: '0.4rem 1rem' }} onClick={() => {
-                  const data = bookings.filter(b => b.status === 'checked-in').map(b => ({
-                    'Bill ID': b.billId,
-                    'Name': b.userName,
-                    'Event': b.eventName,
-                    'Tickets': b.numTickets,
-                    'Date': new Date(b.bookingDate).toLocaleDateString()
-                  }));
-                  const ws = XLSX.utils.json_to_sheet(data);
-                  const wb = XLSX.utils.book_new();
-                  XLSX.utils.book_append_sheet(wb, ws, "Checked In");
-                  XLSX.writeFile(wb, "CheckedIn_Report.xlsx");
-                }}>
-                  <Download size={14} /> Export Checked-in
-                </button>
-              </div>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Select event and scan or enter ticket ID for instant validation.</p>
 
-              <form onSubmit={submitCheckIn} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-                <select
-                  className="form-input"
-                  value={checkInEventId}
-                  onChange={(e) => setCheckInEventId(e.target.value)}
-                  required
-                >
-                  <option value="">-- Select Event at this Gate --</option>
-                  {events.filter(ev => {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    return new Date(ev.date) >= today;
-                  }).map(ev => (
-                    <option key={ev.id} value={ev.id}>{ev.name} ({ev.date})</option>
-                  ))}
-                </select>
-
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                  <input
-                    type="text"
-                    placeholder="Enter Bill ID (e.g. BILL-123456)"
+            <div className="scan-console__grid">
+              <div className="admin-card scan-console__scan-card">
+                <form onSubmit={submitCheckIn} className="scan-form">
+                  <label className="form-label">Event at this gate</label>
+                  <select
                     className="form-input"
-                    value={checkInBillId}
-                    onChange={(e) => setCheckInBillId(e.target.value)}
-                    style={{ minHeight: '52px', fontSize: '1rem', flex: 1 }}
+                    value={checkInEventId}
+                    onChange={(e) => setCheckInEventId(e.target.value)}
                     required
-                  />
-                  <button type="submit" className="admin-btn admin-btn-primary" style={{ whiteSpace: 'nowrap', minHeight: '52px', padding: '0.8rem 1.5rem', fontSize: '1rem' }}>Validate Entry</button>
-                </div>
-              </form>
+                  >
+                    <option value="">-- Select Event at this Gate --</option>
+                    {events.filter(ev => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return new Date(ev.date) >= today;
+                    }).map(ev => (
+                      <option key={ev.id} value={ev.id}>{ev.name} ({ev.date})</option>
+                    ))}
+                  </select>
 
-              {checkInDetails && (
-                <div className="admin-card" style={{ marginBottom: '1rem', textAlign: 'left', border: '1px solid var(--border)' }}>
-                  <h4 style={{ marginBottom: '0.7rem' }}>Scan Details</h4>
-                  <p><strong>User:</strong> {checkInDetails.userName || 'N/A'}</p>
-                  <p><strong>Seat:</strong> {Array.isArray(checkInDetails.seatNumbers) && checkInDetails.seatNumbers.length ? checkInDetails.seatNumbers.join(', ') : 'N/A'}</p>
-                  <p><strong>Event:</strong> {checkInDetails.eventName || 'N/A'}</p>
-                  <p><strong>Status:</strong> {String(checkInResult || '').replace('_', ' ').toUpperCase()}</p>
-                </div>
-              )}
+                  <label className="form-label">Ticket ID / Bill ID</label>
+                  <div className="scan-form__row">
+                    <input
+                      type="text"
+                      placeholder="Enter Bill ID (e.g. BILL-123456)"
+                      className="form-input"
+                      value={checkInBillId}
+                      onChange={(e) => setCheckInBillId(e.target.value)}
+                      required
+                    />
+                    <button type="submit" className="admin-btn admin-btn-primary scan-submit-btn">Validate Entry</button>
+                  </div>
+                </form>
+              </div>
 
-              {checkInResult === 'success' && (
-                <div style={{ padding: '1rem', background: 'rgba(16, 185, 129, 0.2)', color: 'var(--success)', borderRadius: '2px', border: '1px solid var(--success)' }}>
-                  <strong>✅ SUCCESS!</strong> Ticket verified. User has been checked in.
-                </div>
-              )}
-              {checkInResult === 'already_checked_in' && (
-                <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.2)', color: 'var(--danger)', borderRadius: '2px', border: '1px solid var(--danger)' }}>
-                  <strong>⛔ WARNING!</strong> This ticket has already been used for check-in!
-                </div>
-              )}
-              {checkInResult === 'not_found' && (
-                <div style={{ padding: '1rem', background: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b', borderRadius: '2px', border: '1px solid #f59e0b' }}>
-                  <strong>❌ ERROR:</strong> Bill ID not found in system. Fake ticket!
-                </div>
-              )}
-              {checkInResult === 'invalid_status' && (
-                <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.2)', color: 'var(--danger)', borderRadius: '2px', border: '1px solid var(--danger)' }}>
-                  <strong>⛔ REJECTED:</strong> This ticket has been cancelled or refunded!
-                </div>
-              )}
-              {checkInResult === 'not_today' && (
-                <div style={{ padding: '1rem', background: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b', borderRadius: '2px', border: '1px solid #f59e0b' }}>
-                  <strong>⏳ DATE MISMATCH:</strong> Check-in is only allowed on the official event date!
-                </div>
-              )}
-              {checkInResult === 'event_mismatch' && (
-                <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.2)', color: 'var(--danger)', borderRadius: '2px', border: '1px solid var(--danger)' }}>
-                  <strong>🚫 EVENT MISMATCH:</strong> This ticket belongs to a different event!
-                </div>
-              )}
+              <div className={`admin-card scan-console__result-card ${currentScanStatus ? `tone-${currentScanStatus.tone}` : ''}`}>
+                <h4 style={{ marginBottom: '0.65rem' }}>Scan Result</h4>
+                {!checkInResult && <p style={{ margin: 0, color: 'var(--text-muted)' }}>Scan a ticket to view validation details.</p>}
+                {checkInResult && currentScanStatus && (
+                  <>
+                    <p style={{ margin: 0, fontWeight: 800 }}>{currentScanStatus.title}</p>
+                    <p style={{ marginTop: '0.35rem', color: 'var(--text-muted)' }}>{currentScanStatus.message}</p>
+                  </>
+                )}
+                {checkInDetails && (
+                  <div className="scan-details-list">
+                    <div><span>User</span><strong>{checkInDetails.userName || 'N/A'}</strong></div>
+                    <div><span>Seat</span><strong>{Array.isArray(checkInDetails.seatNumbers) && checkInDetails.seatNumbers.length ? checkInDetails.seatNumbers.join(', ') : 'N/A'}</strong></div>
+                    <div><span>Event</span><strong>{checkInDetails.eventName || 'N/A'}</strong></div>
+                    <div><span>Status</span><strong>{String(checkInResult || '').replace('_', ' ').toUpperCase()}</strong></div>
+                  </div>
+                )}
+              </div>
+            </div>
 
-              {/* RECENT CHECK-INS */}
-              <div style={{ marginTop: '3rem', textAlign: 'left' }}>
-                <h4 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Users size={18} /> Recent Check-ins
-                </h4>
-                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                  {bookings.filter(b => b.status === 'checked-in').length === 0 ? (
-                    <p className="text-muted" style={{ textAlign: 'center', padding: '1rem' }}>No check-ins today.</p>
-                  ) : (
-                    bookings.filter(b => b.status === 'checked-in').map(b => (
-                      <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', borderBottom: '1px solid var(--border)', background: 'var(--surface-raised)', borderRadius: '4px', marginBottom: '0.5rem' }}>
-                        <div>
-                          <strong style={{ display: 'block' }}>{b.userName}</strong>
-                          <small className="text-muted">{b.eventName} | {b.billId}</small>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: 'bold' }}>
-                            {b.checkInDate ? new Date(b.checkInDate).toLocaleTimeString() : 'Just now'}
-                          </span>
-                          <button
-                            className="admin-btn btn-danger"
-                            style={{ padding: '0.3rem', borderRadius: '4px' }}
-                            onClick={() => handleRevertCheckIn(b.id)}
-                            title="Undo Check-in"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+            <div className="admin-card" style={{ marginTop: '1rem' }}>
+              <h4 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Users size={18} /> Recent Check-ins
+              </h4>
+              <div className="scan-recent-list">
+                {bookings.filter(b => b.status === 'checked-in').length === 0 ? (
+                  <p className="text-muted" style={{ textAlign: 'center', padding: '1rem' }}>No check-ins today.</p>
+                ) : (
+                  bookings.filter(b => b.status === 'checked-in').map(b => (
+                    <div key={b.id} className="scan-recent-row">
+                      <div>
+                        <strong style={{ display: 'block' }}>{b.userName}</strong>
+                        <small className="text-muted">{b.eventName} | {b.billId}</small>
                       </div>
-                    ))
-                  )}
-                </div>
+                      <div className="scan-recent-actions">
+                        <span className="scan-time-pill">
+                          {b.checkInDate ? new Date(b.checkInDate).toLocaleTimeString() : 'Just now'}
+                        </span>
+                        <button
+                          className="admin-btn btn-danger"
+                          style={{ padding: '0.35rem 0.55rem' }}
+                          onClick={() => handleRevertCheckIn(b.id)}
+                          title="Undo Check-in"
+                        >
+                          <Trash2 size={14} /> Undo
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
