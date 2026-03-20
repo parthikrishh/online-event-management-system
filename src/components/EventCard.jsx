@@ -14,7 +14,6 @@ function EventCard({ event, isWishlisted, onToggleWishlist, onBook, onPrefetch }
   const fallbackCapacity = event.capacity || 50;
   const remainingSeats = Math.max(0, Number(event.availableCapacity ?? fallbackCapacity));
   const soldOut = remainingSeats <= 0;
-  const vipSeatCount = Array.isArray(event.vipSeats) ? event.vipSeats.length : 0;
 
   return (
     <MotionArticle
@@ -44,11 +43,10 @@ function EventCard({ event, isWishlisted, onToggleWishlist, onBook, onPrefetch }
             <IndianRupee size={16} />
             <strong>{event.price}</strong>
           </div>
-          {vipSeatCount > 0 && <span className="event-card__availability" style={{ fontWeight: 900 }}>VIP seats available</span>}
           <span className={`event-card__availability ${soldOut ? 'is-soldout' : ''}`}>
             {soldOut ? 'Sold out' : `${remainingSeats} seats left`}
           </span>
-          <button className="btn btn-primary" type="button" onClick={onBook} disabled={soldOut}>
+          <button className="btn btn-primary event-card__cta" type="button" onClick={onBook} disabled={soldOut}>
             {soldOut ? 'Unavailable' : 'Book Tickets'}
           </button>
         </div>
