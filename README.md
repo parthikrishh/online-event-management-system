@@ -1,221 +1,211 @@
-# EventX – Modern Online Event Management System
+# EventX - Online Event Management System
 
-![React](https://img.shields.io/badge/React-18-blue)
-![Vite](https://img.shields.io/badge/Vite-BuildTool-purple)
-![CSS](https://img.shields.io/badge/CSS3-Styling-orange)
-![Netlify](https://img.shields.io/badge/Netlify-Hosting-green)
+![React](https://img.shields.io/badge/React-19-blue)
+![Vite](https://img.shields.io/badge/Vite-8-orange)
+![Express](https://img.shields.io/badge/Express-5-black)
+![Netlify](https://img.shields.io/badge/Frontend-Netlify-green)
+![Render](https://img.shields.io/badge/Backend-Render-blueviolet)
 
-> A modern, responsive **event management platform** that allows users to explore and register for events while administrators manage events efficiently. Built using **React + Vite** for fast performance and a modern UI.
+A production-ready event booking platform with dedicated **user** and **admin** experiences, real-time updates, secure booking flow, and a fully responsive UI with a separate mobile app-style layout.
 
----
+## Live Demo
 
-## 🌐 Live Demo
+Frontend: https://online-eventx-management-system.netlify.app/
 
-🔗 **Project Link:**
-https://eventx-management-platform.netlify.app/
+## What Is Included
 
----
+- Event discovery and booking with seat selection
+- Admin event management (create/edit/delete/cancel/refund)
+- Gate Scan Console with check-in validation and status feedback
+- Promo code management and validation
+- Refund workflow (full and partial cancellation)
+- Per-event CGST/SGST support
+- Admin-defined VIP seats and VIP pricing model
+- User dashboard with booking history, invoices, and profile management
+- Real-time client refresh through SSE updates
+- Separate mobile shell (`MobileLayout`) for <= 768px viewports
 
-## 🚀 Features
+## Tech Stack
 
-* Fully responsive design (mobile, tablet, desktop)
-* User and admin dashboards
-* Secure authentication system
-* Event creation and management by admins
-* Event registration and booking for users
-* Modern UI inspired by **Zomato / BookMyShow**
-* Fast build and development using **Vite**
-* Clean and intuitive user interface
+### Frontend
 
----
+- React 19
+- React Router
+- Vite
+- Framer Motion
+- Lucide React
+- Recharts
+- XLSX
+- jsPDF
 
-## 🖥️ Tech Stack
+### Backend
 
-**Frontend**
+- Node.js
+- Express 5
+- JSON file persistence (`backend/data/db.json`)
+- Server-Sent Events (SSE) for real-time updates
 
-* React.js
-* Vite
-* CSS3 (Flexbox, Grid, Media Queries)
+### Deployment
 
-**Deployment**
+- Frontend: Netlify
+- Backend: Render
 
-* Netlify
+## UI/UX (Latest)
 
-**Tools**
+- Modern orange-first visual theme
+- Card-based layout system
+- Responsive typography and spacing
+- Table behavior optimized for desktop and mobile
+- Dedicated mobile navigation shell:
+  - Sticky top bar
+  - Drawer menu
+  - Bottom navigation
+- Touch-friendly controls (44px minimum interactive height)
 
-* Git
-* GitHub
-* VS Code
+## Screenshots
 
----
-
-## 📸 Screenshots
-
-### 1) Explore Events (Home)
+### Home / Explore
 
 ![Explore Events](screenshots/home.png)
 
-### 2) Admin Dashboard Overview
+### Admin Dashboard
 
-![Admin Dashboard Overview](screenshots/admin-dashboard.png)
+![Admin Dashboard](screenshots/admin-dashboard.png)
 
-### 3) Admin Operations View
-
-![Admin Operations View](screenshots/admin-dashboard.png)
-
-### 4) User Dashboard
+### User Dashboard
 
 ![User Dashboard](screenshots/user-dashboard.png)
 
-### 5) Hero Section Preview
+### Hero Preview
 
-![Hero Section](src/assets/hero.png)
+![Hero](src/assets/hero.png)
 
-### 6) Explore Events - Card Layout
+## Project Structure
 
-![Explore Events Card Layout](screenshots/home.png)
-
-### 7) Admin Event Management
-
-![Admin Event Management](screenshots/admin-dashboard.png)
-
-### 8) User Booking History
-
-![User Booking History](screenshots/user-dashboard.png)
-
----
-
-## 📱 Responsive Design
-
-* Mobile-first UI approach
-* Hamburger navigation menu
-* Adaptive event cards
-* Responsive forms and tables
-* Optimized layouts for all screen sizes
-* No horizontal scrolling
-
----
-
-## 📁 Project Structure
-
-```
-eventx-management-platform
-│
-├── public
-│
-├── src
-│   ├── assets
-│   ├── components
-│   ├── pages
-│   ├── utils
+```text
+online-event-management-system/
+├── backend/
+│   ├── data/
+│   │   └── db.json
+│   └── server.js
+├── public/
+├── screenshots/
+├── src/
+│   ├── components/
+│   │   └── MobileLayout.jsx
+│   ├── pages/
+│   ├── services/
+│   ├── utils/
 │   ├── App.jsx
+│   ├── index.css
 │   └── main.jsx
-│
+├── netlify.toml
+├── render.yaml
 ├── package.json
-├── vite.config.js
 └── README.md
 ```
 
----
+## Local Development
 
-## 🛠️ Getting Started
-
-### 1️⃣ Clone the repository
+### 1) Clone
 
 ```bash
 git clone https://github.com/parthikrishh/online-event-management-system.git
 cd online-event-management-system
 ```
 
-### 2️⃣ Install dependencies
+### 2) Install
 
 ```bash
 npm install
 ```
 
-### 3️⃣ Run the development server
+### 3) Run (frontend + backend together)
+
+```bash
+npm run dev:full
+```
+
+### 4) Frontend only
 
 ```bash
 npm run dev
 ```
 
-### 4️⃣ Build for production
+### 5) Backend only
 
 ```bash
+npm run server
+```
+
+### 6) Lint and build
+
+```bash
+npm run lint
 npm run build
 ```
 
----
+## Environment Variables
 
-## 📦 Deployment
-
-This project is deployed using **Netlify**.
-
-Steps:
-
-1. Build the project
+### Frontend (Netlify)
 
 ```bash
-npm run build
+VITE_API_BASE_URL=https://your-backend-domain.onrender.com
 ```
 
-2. Upload the **dist** folder to Netlify.
-
-Or connect your **GitHub repository directly to Netlify** for automatic deployments.
-
-### Real-time multi-user deployment (recommended)
-
-If you want 100+ users to see shared updates in near real-time:
-
-1. Host frontend on Netlify.
-2. Host backend separately (Render/Railway/Fly/VM) so `backend/server.js` is always running.
-3. Set frontend env var on Netlify:
+### Backend (Render optional)
 
 ```bash
-VITE_API_BASE_URL=https://your-backend-domain.com
+PORT=4000
+FRONTEND_URL=https://online-eventx-management-system.netlify.app
 ```
 
-4. Keep backend CORS enabled (already configured).
+## Deployment Guide
 
-The frontend subscribes to backend SSE at `/api/stream`, and all data writes broadcast updates to connected clients.
+### Backend to Render
 
-## ✅ Quick Deploy (Copy This)
+This repo already includes `render.yaml`.
 
-If you are not sure how to deploy, use this exact flow:
+1. Create new Render Web Service from this repo
+2. Render detects `render.yaml`
+3. Deploy and copy backend URL
+4. Verify health endpoint:
 
-1. Push this repo to GitHub.
-2. Deploy backend on Render:
-	- New -> Web Service -> connect this repo
-	- Render auto-detects `render.yaml`
-	- Wait until service is live
-	- Copy backend URL (example: `https://eventx-api.onrender.com`)
-3. Deploy frontend on Netlify:
-	- New site from Git -> connect same repo
-	- Netlify auto-detects `netlify.toml`
-	- In Site Settings -> Environment Variables, add:
-	  - `VITE_API_BASE_URL` = your backend URL
-	- Trigger redeploy
-4. Verify:
-	- Backend health: `https://your-backend-domain/api/health`
-	- Frontend opens and logs in
-	- Open two browsers and create/update a booking in one browser; the other should refresh automatically.
+```text
+https://your-backend-domain/api/health
+```
+
+### Frontend to Netlify
+
+This repo already includes `netlify.toml`.
+
+1. Import this repo in Netlify
+2. Ensure settings:
+- Build command: `npm run build`
+- Publish directory: `dist`
+3. Add env var `VITE_API_BASE_URL`
+4. Trigger deploy
+
+## Key APIs
+
+- `GET /api/health` - backend health
+- `GET /api/stream` - SSE stream for real-time updates
+- `GET /api/events` - list events
+- `GET /api/users` - list users
+- Booking, refunds, promos, logs endpoints handled under `/api/*`
+
+## Notes
+
+- The backend uses JSON persistence for easy setup and demo use.
+- For high-scale production, replace JSON file storage with a managed database.
+
+## Author
+
+Parthiban K B
+
+- GitHub: https://github.com/parthikrishh
+- LinkedIn: https://www.linkedin.com/in/parthikrishh
 
 ---
 
-## 🙌 Credits
-
-* Inspired by modern event booking platforms like **Zomato** and **BookMyShow**
-* Built with ❤️ using **React + Vite**
-
----
-
-## 👨‍💻 Author
-
-**Parthiban K B**
-
-* GitHub: https://github.com/parthikrishh
-* Linkedin: www.linkedin.com/in/parthikrishh
-
----
-
-⭐ If you like this project, feel free to **star the repository**.
+If you find this useful, star the repository.
