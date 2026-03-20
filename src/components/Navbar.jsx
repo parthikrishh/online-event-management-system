@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { LogOut, User, Menu, X } from 'lucide-react';
 import { setItem } from '../utils/storage';
@@ -8,6 +8,13 @@ export default function Navbar({ user, setUser }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflow = isMenuOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMenuOpen]);
 
   const handleLogout = () => {
     setItem('oems_current_user', null);
@@ -28,11 +35,18 @@ export default function Navbar({ user, setUser }) {
         Event<span>X</span>
       </Link>
 
-      <button className="mobile-menu-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+      <button
+        className="mobile-menu-btn"
+        onClick={() => setIsMenuOpen(!isMenuOpen)}
+        aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+        aria-expanded={isMenuOpen}
+        aria-controls="main-navigation"
+        type="button"
+      >
         {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
       
-      <div className={`nav-links ${isMenuOpen ? 'active' : ''}`}>
+      <div id="main-navigation" className={`nav-links ${isMenuOpen ? 'active' : ''}`}>
         <Link 
           to="/events" 
           className={`nav-link ${isActive('/events') || isActive('/') ? 'active' : ''}`}
