@@ -7,7 +7,6 @@ export default function Footer() {
           <p>Plan better events. Book faster. Manage smarter.</p>
         </div>
         <div className="site-footer__meta">
-          <span>Orange booking experience</span>
           <span>Responsive on mobile, tablet, desktop</span>
         </div>
       </div>

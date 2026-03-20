@@ -1600,6 +1600,10 @@ th {
   gap: 0.2rem;
 }
 
+.modal-event-actions .admin-btn {
+  min-width: 120px;
+}
+
 @media (max-width: 980px) {
   .event-details-card {
     grid-template-columns: 1fr;
@@ -1740,6 +1744,16 @@ th {
   .user-dashboard-filters,
   .admin-actions-grid {
     width: 100%;
+  }
+
+  .modal-event-actions {
+    width: 100%;
+    justify-content: stretch !important;
+  }
+
+  .modal-event-actions .admin-btn {
+    flex: 1 1 100%;
+    justify-content: center;
   }
 
   .admin-actions-grid > * {

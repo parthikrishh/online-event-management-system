@@ -44,11 +44,7 @@ function EventCard({ event, isWishlisted, onToggleWishlist, onBook, onPrefetch }
             <IndianRupee size={16} />
             <strong>{event.price}</strong>
           </div>
-          {vipSeatCount > 0 && (
-            <span className="event-card__availability" style={{ fontWeight: 900 }}>
-              VIP: INR {event.vipPrice || event.price}
-            </span>
-          )}
+          {vipSeatCount > 0 && <span className="event-card__availability" style={{ fontWeight: 900 }}>VIP seats available</span>}
           <span className={`event-card__availability ${soldOut ? 'is-soldout' : ''}`}>
             {soldOut ? 'Sold out' : `${remainingSeats} seats left`}
           </span>

@@ -467,7 +467,7 @@ export default function Home({ user }) {
                             key={seatId}
                             onClick={() => toggleSeat(seatId)}
                             disabled={isBooked}
-                            title={isVip ? `VIP Seat (${modalEvent.vipPrice || modalEvent.price})` : `Regular Seat (${modalEvent.price})`}
+                            title={isVip ? 'VIP Seat' : `Regular Seat (${modalEvent.price})`}
                           >
                             <span className="seat-label">{col}</span>
                             {isVip && <span className="seat-vip-tag">VIP</span>}

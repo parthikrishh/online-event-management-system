@@ -1133,14 +1133,7 @@ export default function AdminDashboard() {
                 <h2 style={{ margin: 0 }}>Event Directory</h2>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Centralized control for all {events.length} system events.</p>
               </div>
-              <div style={{ display: 'flex', gap: '0.8rem' }}>
-                <button className="admin-btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderRadius: '50px' }} onClick={handleCleanupPastEvents}>
-                  <Trash2 size={16} /> Cleanup
-                </button>
-                <button className="admin-btn admin-btn-primary" style={{ borderRadius: '50px' }} onClick={openAddEvent}>
-                  <Plus size={18} /> Create Event
-                </button>
-              </div>
+              <small className="text-muted">Use the action bar below to create, export, or remove past events.</small>
             </div>
 
             <div className="grid" style={{ marginBottom: '2rem' }}>
@@ -1159,7 +1152,7 @@ export default function AdminDashboard() {
                 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#dc2626' }}
                 onClick={handleCleanupPastEvents}
               >
-                <Trash2 size={16} /> Cleanup Past Events
+                <Trash2 size={16} /> Remove Past Events
               </button>
               <div className="search-bar" style={{ maxWidth: '200px', marginBottom: 0, height: '42px' }}>
                 <Search size={18} />
@@ -1199,7 +1192,7 @@ export default function AdminDashboard() {
                 <Download size={14} /> Export
               </button>
               <button className="admin-btn admin-btn-success" onClick={openAddEvent} style={{ height: '42px' }}>
-                <Plus size={18} /> Add Event
+                <Plus size={18} /> Create Event
               </button>
             </div>
             <div className="flex-between" style={{ margin: '1rem 0 0.5rem' }}>
@@ -2185,9 +2178,9 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
-                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
-                  <button type="button" className="btn btn-secondary" onClick={() => setIsEventModalOpen(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-success">Save Event</button>
+                <div className="modal-event-actions" style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
+                  <button type="button" className="admin-btn admin-btn-secondary" onClick={() => setIsEventModalOpen(false)}>Cancel</button>
+                  <button type="submit" className="admin-btn admin-btn-success">Save Event</button>
                 </div>
               </form>
             </div>

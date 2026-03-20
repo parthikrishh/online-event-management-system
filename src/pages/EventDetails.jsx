@@ -48,9 +48,7 @@ export default function EventDetails() {
           <p>{event.description}</p>
           <p><CalendarDays size={16} /> {new Date(event.date).toLocaleDateString()}</p>
           <p><MapPin size={16} /> {event.location}</p>
-          {vipSeatCount > 0 && (
-            <p><strong>VIP</strong>: {vipSeatCount} seats available at INR {event.vipPrice || event.price}</p>
-          )}
+          {vipSeatCount > 0 && <p><strong>VIP</strong>: {vipSeatCount} premium seats available</p>}
           <p className={`event-details-availability ${remainingSeats <= 0 ? 'is-soldout' : ''}`}>
             {remainingSeats <= 0 ? 'Sold out' : `Remaining seats: ${remainingSeats}`}
           </p>
