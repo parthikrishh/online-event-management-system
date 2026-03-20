@@ -1,23 +1,13 @@
-import { useState } from 'react';
-import { getItem, cancelBookingByUser, addReview, deleteBooking, updateUserProfile, deleteUserAccount } from '../utils/storage';
+import { useState, useMemo, lazy, Suspense } from 'react';
+import { setItem } from '../utils/storage';
+import { useQuery, useMutation, api } from '../services/apiService';
 import { Download, CalendarDays, CheckCircle2, Star, RefreshCcw, Info, Trash2, Search, User as UserIcon, Mail, ShieldCheck, Camera, LogOut, Edit, Eye, EyeOff } from 'lucide-react';
-import { requestRefund } from '../utils/storage';
-import { jsPDF } from 'jspdf';
-import { QRCodeCanvas } from 'qrcode.react';
+import { useToast } from '../context/ToastContext';
+
+const QRCodeCanvas = lazy(() => import('qrcode.react').then((module) => ({ default: module.QRCodeCanvas })));
 
 export default function UserDashboard({ user }) {
-  const loadBookings = () => {
-    const allBookings = getItem('oems_bookings') || [];
-    const userBookings = allBookings.filter(b => b.userId === user.id);
-    setBookings(userBookings.reverse());
-  };
-
-  const [bookings, setBookings] = useState(() => {
-    const allBookings = getItem('oems_bookings') || [];
-    const userBookings = allBookings.filter(b => b.userId === user.id);
-    return userBookings.reverse(); // latest first
-  });
-
+  const { showToast } = useToast();
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
   const [bookingSearch, setBookingSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -32,6 +22,33 @@ export default function UserDashboard({ user }) {
     password: user.password,
     image: user.image || ''
   });
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [selectedBookingForReview, setSelectedBookingForReview] = useState(null);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
+  const [downloadingBookingId, setDownloadingBookingId] = useState(null);
+
+  const userBookingsData = useQuery(api.bookings.listByUser, { userId: user?.id || "" });
+  const eventsData = useQuery(api.events.list);
+  const reviewsData = useQuery(api.misc.listReviews);
+  const refundMutation = useMutation(api.bookings.processRefund);
+  const addReviewMutation = useMutation(api.misc.addReview);
+  const deleteBookingMutation = useMutation(api.bookings.remove);
+  const updateProfileMutation = useMutation(api.users.update);
+  const deleteUserMutation = useMutation(api.users.remove);
+  const bookings = useMemo(() => (userBookingsData ? [...userBookingsData].reverse() : []), [userBookingsData]);
+  const events = eventsData || [];
+
+  const filteredBookings = useMemo(() => {
+    return bookings.filter((booking) => {
+      const eventName = (booking.eventName || '').toLowerCase();
+      const billId = (booking.billId || '').toLowerCase();
+      const query = bookingSearch.toLowerCase();
+      const matchesSearch = eventName.includes(query) || billId.includes(query);
+      const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [bookings, bookingSearch, statusFilter]);
+
 
   const handleOpenRefund = (booking) => {
     setSelectedBookingForRefund(booking);
@@ -39,12 +56,19 @@ export default function UserDashboard({ user }) {
     setIsRefundModalOpen(true);
   };
 
-  const handleRefundSubmit = (e) => {
+  const handleRefundSubmit = async (e) => {
     e.preventDefault();
-    requestRefund(selectedBookingForRefund.id, user.id, selectedBookingForRefund.totalAmount, refundForm.reason, refundForm.bankDetails);
-    alert("Refund request submitted successfully. Admin will process it soon.");
+    try {
+      await refundMutation({
+        bookingId: selectedBookingForRefund.id,
+        isApproved: true 
+      });
+      showToast("Refund processed successfully.", "success");
+    } catch (err) {
+      console.error("Refund failed", err);
+      showToast("Refund failed. Please try again.", "error");
+    }
     setIsRefundModalOpen(false);
-    loadBookings();
   };
 
   const handleCancelBooking = (booking) => {
@@ -53,16 +77,18 @@ export default function UserDashboard({ user }) {
     }
   };
 
-  const handleDeleteBooking = (bookingId) => {
+  const handleDeleteBooking = async (bookingId) => {
     if (confirm("Are you sure you want to delete this booking from your history? This cannot be undone.")) {
-      deleteBooking(bookingId);
-      loadBookings();
+      try {
+        await deleteBookingMutation({ id: bookingId });
+        showToast("Booking record removed.", "info");
+      } catch (err) {
+        console.error("Delete booking failed", err);
+        showToast("Failed to remove booking record.", "error");
+      }
     }
   };
 
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [selectedBookingForReview, setSelectedBookingForReview] = useState(null);
-  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
 
   const handleOpenReview = (booking) => {
     setSelectedBookingForReview(booking);
@@ -70,136 +96,125 @@ export default function UserDashboard({ user }) {
     setIsReviewModalOpen(true);
   };
 
-  const handleReviewSubmit = (e) => {
+  const handleReviewSubmit = async (e) => {
     e.preventDefault();
-    addReview(user.id, user.name, selectedBookingForReview.eventId, reviewForm.rating, reviewForm.comment);
-    alert("Review submitted! Thank you for your feedback.");
+    const reviewData = {
+      id: Date.now().toString(),
+      userId: user.id,
+      userName: user.name,
+      eventId: selectedBookingForReview.eventId,
+      rating: reviewForm.rating,
+      comment: reviewForm.comment,
+      date: new Date().toISOString()
+    };
+    try {
+      await addReviewMutation(reviewData);
+      showToast("Review submitted! Thank you.", "success");
+    } catch (err) {
+      console.error("Review submission failed", err);
+      showToast("Review submission failed.", "error");
+    }
     setIsReviewModalOpen(false);
   };
 
-  const handleDownloadReceipt = (booking) => {
-    const doc = new jsPDF();
-    const events = getItem('oems_events') || [];
-    const event = events.find(e => e.id === booking.eventId);
-    
-    // Header & Logo Branding
-    doc.setFillColor(255, 49, 82); // Zomato Red
-    doc.rect(0, 0, 210, 40, 'F');
-    
+  const handleDownloadReceipt = async (booking) => {
+    setDownloadingBookingId(booking.id);
+    try {
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF();
+      const event = events.find(e => e.id === booking.eventId);
+
+    const statusText = booking.status ? booking.status.replace(/_/g, ' ').toUpperCase() : 'BOOKED';
+    const transactionId = booking.transactionId || `TXN-${booking.id?.slice(-8) || booking.billId?.slice(-8) || 'UNKNOWN'}`;
+    const paymentStatus = (booking.paymentStatus || 'paid').toUpperCase();
+    const seatText = booking.selectedSeats?.length ? booking.selectedSeats.join(', ') : 'Not allocated';
+
+    doc.setFillColor(255, 107, 0);
+    doc.rect(0, 0, 210, 28, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(28);
-    doc.text("EVENTX BOOKING SYSTEM", 20, 25);
+    doc.setFontSize(20);
+    doc.text('EVENTX', 14, 18);
     doc.setFontSize(10);
-    doc.text("OFFICIAL BOOKING RECEIPT", 20, 32);
+    doc.text('Booking Invoice', 14, 24);
 
-    // Status Watermark / Stamp - Improved with dynamic sizing and global replacement
-    const statusText = booking.status ? booking.status.replace(/_/g, ' ').toUpperCase() : 'BOOKED';
-    
-    if (booking.status !== 'booked' && booking.status !== 'checked-in') {
-        // Draw a stylized stamp box
-        doc.setDrawColor(239, 68, 68);
-        doc.setLineWidth(1.5);
-        doc.rect(45, 140, 120, 60, 'S');
-        
-        doc.setTextColor(239, 68, 68); // Bright Red
-        doc.setFont('helvetica', 'bold');
-        
-        // Dynamic font size for long labels
-        const stampFontSize = statusText.length > 10 ? 40 : 50;
-        doc.setFontSize(stampFontSize);
-        
-        // Center the status text inside the box
-        doc.text(statusText, 105, 175, { align: 'center' });
-        
-        // Secondary warning text - smaller and wrapped
-        doc.setFontSize(10);
-        doc.text("THIS TICKET IS VOID / NO LONGER VALID", 105, 185, { align: 'center' });
-    }
-    
-    doc.setTextColor(15, 23, 42); // Slate-900
-    doc.setFontSize(10);
+    doc.setTextColor(33, 37, 45);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Booking Date: ${new Date(booking.bookingDate).toLocaleString()}`, 20, 50);
-    doc.text(`Bill ID: ${booking.billId}`, 150, 50);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 36);
 
-    // Event Info Section
-    doc.setFillColor(248, 250, 252); // Slate-50
-    doc.rect(20, 60, 170, 45, 'F');
-    doc.setDrawColor(226, 232, 240); // Slate-200
-    doc.rect(20, 60, 170, 45, 'S');
+    const drawSection = (title, y) => {
+      doc.setFillColor(250, 250, 250);
+      doc.setDrawColor(226, 229, 236);
+      doc.rect(14, y, 182, 8, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(255, 107, 0);
+      doc.text(title, 16, y + 5.5);
+    };
+
+    const drawRow = (label, value, y) => {
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(49, 57, 72);
+      doc.text(label, 16, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(78, 89, 109);
+      doc.text(String(value), 70, y, { maxWidth: 120 });
+    };
+
+    drawSection('Event Details', 42);
+    drawRow('Event Name', booking.eventName || 'N/A', 56);
+    drawRow('Date', event?.date || 'N/A', 63);
+    drawRow('Time', event?.time || 'N/A', 70);
+    drawRow('Venue', event?.location || 'N/A', 77);
+
+    drawSection('User Details', 84);
+    drawRow('Name', booking.userName || 'N/A', 98);
+    drawRow('Email', booking.userEmail || user.email || 'N/A', 105);
+    drawRow('Seats', seatText, 112);
+
+    drawSection('Booking Info', 119);
+    drawRow('Booking ID', booking.id || 'N/A', 133);
+    drawRow('Bill ID', booking.billId || 'N/A', 140);
+    drawRow('Transaction ID', transactionId, 147);
+    drawRow('Booked On', new Date(booking.bookingDate).toLocaleString(), 154);
+    drawRow('Payment Status', paymentStatus, 161);
+    drawRow('Ticket Status', statusText, 168);
+
+    doc.setFillColor(255, 247, 239);
+    doc.setDrawColor(255, 214, 183);
+    doc.rect(14, 176, 182, 46, 'FD');
+
+    const base = Number(booking.originalTotal || booking.discountedAmount || booking.totalAmount || 0);
+    const discountAmount = Number(booking.discountUsed ? base * booking.discountUsed : 0);
+    const taxable = Number(booking.discountedAmount || base - discountAmount || 0);
+    const cgst = Number(booking.cgst || 0);
+    const sgst = Number(booking.sgst || 0);
+    const total = Number(booking.totalAmount || taxable + cgst + sgst);
+
+    drawRow('Subtotal', `INR ${base.toFixed(2)}`, 187);
+    drawRow('Discount', `- INR ${discountAmount.toFixed(2)}`, 194);
+    drawRow('CGST (9%)', `INR ${cgst.toFixed(2)}`, 201);
+    drawRow('SGST (9%)', `INR ${sgst.toFixed(2)}`, 208);
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    // Ensure long event names don't clip
-    const eventName = booking.eventName.toUpperCase();
-    doc.text(eventName.length > 30 ? eventName.substring(0, 30) + "..." : eventName, 25, 70);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`Date: ${event?.date || 'N/A'}`, 25, 80);
-    doc.text(`Time: ${event?.time || 'N/A'}`, 25, 87);
-    doc.text(`Venue: ${event?.location || 'N/A'}`, 25, 94);
+    doc.setTextColor(186, 73, 0);
+    doc.setFontSize(12);
+    doc.text(`TOTAL: INR ${total.toFixed(2)}`, 16, 218);
 
-    // Attendee Info
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('helvetica', 'bold');
-    doc.text("ATTENDEE DETAILS", 20, 120);
-    doc.line(20, 122, 60, 122);
-
-    doc.setFont('helvetica', 'normal');
-    const details = [
-        ["Ticket Holder:", booking.userName],
-        ["Tickets Booked:", booking.numTickets.toString()],
-        ["Seats Assigned:", booking.selectedSeats ? (booking.selectedSeats.length > 5 ? booking.selectedSeats.slice(0, 5).join(', ') + '...' : booking.selectedSeats.join(', ')) : 'N/A'],
-        ["Unit Price:", `INR ${booking.ticketPrice}`],
-        ["Status:", statusText]
-    ];
-
-    if (booking.discountUsed > 0) {
-        const discAmt = booking.originalTotal - (booking.discountedAmount || booking.totalAmount / 1.18);
-        details.push(["Base Total:", `INR ${booking.originalTotal.toFixed(2)}`]);
-        details.push(["Discount:", `- INR ${discAmt.toFixed(2)} (${(booking.discountUsed * 100).toFixed(0)}%)`]);
-    }
-
-    if (booking.cgst) {
-        details.push(["Taxable Amt:", `INR ${booking.discountedAmount.toFixed(2)}`]);
-        details.push(["CGST (9%):", `INR ${booking.cgst.toFixed(2)}`]);
-        details.push(["SGST (9%):", `INR ${booking.sgst.toFixed(2)}`]);
-    }
-
-    let currentY = 132;
-    details.forEach(item => {
-        doc.setFont('helvetica', 'bold');
-        doc.text(item[0], 20, currentY);
-        doc.setFont('helvetica', 'normal');
-        doc.text(item[1], 70, currentY);
-        currentY += 8;
-    });
-
-    // Total Summary
-    doc.setFillColor(99, 102, 241, 0.05);
-    doc.rect(120, 180, 70, 30, 'F');
-    doc.setDrawColor(99, 102, 241, 0.2);
-    doc.rect(120, 180, 70, 30, 'S');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(15, 23, 42);
-    doc.text("TOTAL PAID", 125, 192);
-    doc.setFontSize(18);
-    doc.setTextColor(79, 70, 229);
-    doc.text(`INR ${booking.totalAmount}`, 125, 204);
-    
-    // Branding Footer
-    doc.setTextColor(148, 163, 184);
-    doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
-    doc.text("Generated by OEMS Professional Billing System", 20, 280);
-    doc.text("Thank you for your business!", 150, 280);
+    doc.setFontSize(8);
+    doc.setTextColor(122, 128, 141);
+    doc.text('This is a computer-generated invoice from EventX.', 14, 286);
+    doc.text('Please carry your booking ID for verification at entry.', 130, 286, { align: 'right' });
 
-    doc.save(`Invoice_${booking.billId}.pdf`);
+      doc.save(`Invoice_${booking.billId}.pdf`);
+    } catch (error) {
+      console.error('Failed to generate invoice', error);
+      showToast('Failed to generate invoice. Please try again.', 'error');
+    } finally {
+      setDownloadingBookingId(null);
+    }
   };
 
   const handleProfileImageChange = (e) => {
@@ -213,21 +228,32 @@ export default function UserDashboard({ user }) {
     }
   };
 
-  const handleUpdateProfile = (e) => {
+  const handleUpdateProfile = async (e) => {
     e.preventDefault();
-    const updated = updateUserProfile(user.id, profileForm);
-    if (updated) {
-      alert('Profile updated successfully!');
+    try {
+      await updateProfileMutation({
+        id: user.id,
+        updates: profileForm
+      });
+      const updated = { ...user, ...profileForm };
+      setItem('oems_current_user', updated);
+      showToast('Profile updated successfully!', 'success');
       setIsProfileModalOpen(false);
-      window.location.reload(); // Refresh to update user context
+    } catch {
+      showToast('Profile update failed. Please retry.', 'error');
     }
   };
 
-  const handleDeleteAccount = () => {
-    if (confirm('CRITICAL: Are you sure you want to delete your account? This will remove all your bookings and personal data. This action cannot be undone.')) {
-        deleteUserAccount(user.id);
-        alert('Account deleted successfully. Logging out...');
-        window.location.href = '/'; 
+  const handleDeleteAccount = async () => {
+    if (confirm('CRITICAL: Are you sure you want to delete your account? This action cannot be undone.')) {
+      try {
+        await deleteUserMutation({ id: user.id });
+        showToast('Account deleted. Logging out...', 'success');
+        setItem('oems_current_user', null);
+        window.location.href = '/';
+      } catch {
+        showToast('Account deletion failed. Please retry.', 'error');
+      }
     }
   };
 
@@ -240,16 +266,28 @@ export default function UserDashboard({ user }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
-        <button 
-          className={`btn ${activeTab === 'bookings' ? 'btn-primary' : 'btn-secondary'}`}
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '3rem', borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
+        <button
+          className={`btn ${activeTab === 'bookings' ? 'active' : ''}`}
           onClick={() => setActiveTab('bookings')}
+          style={{
+            background: activeTab === 'bookings' ? 'var(--primary)' : 'transparent',
+            color: activeTab === 'bookings' ? 'white' : 'var(--text-muted)',
+            borderRadius: '50px',
+            border: activeTab === 'bookings' ? 'none' : '1px solid var(--border)'
+          }}
         >
           <CalendarDays size={18} /> My Bookings
         </button>
-        <button 
-          className={`btn ${activeTab === 'profile' ? 'btn-primary' : 'btn-secondary'}`}
+        <button
+          className={`btn ${activeTab === 'profile' ? 'active' : ''}`}
           onClick={() => setActiveTab('profile')}
+          style={{
+            background: activeTab === 'profile' ? 'var(--primary)' : 'transparent',
+            color: activeTab === 'profile' ? 'white' : 'var(--text-muted)',
+            borderRadius: '50px',
+            border: activeTab === 'profile' ? 'none' : '1px solid var(--border)'
+          }}
         >
           <UserIcon size={18} /> My Profile
         </button>
@@ -262,28 +300,28 @@ export default function UserDashboard({ user }) {
               <CalendarDays size={24} color="var(--primary)" /> Bookings History
             </h2>
             <div className="user-dashboard-filters" style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
-                <select 
-                    className="form-input" 
-                    style={{ width: '150px', marginBottom: 0, height: '42px', padding: '0 1rem', flex: '1 1 150px' }}
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                    <option value="all">All Status</option>
-                    <option value="booked">Booked</option>
-                    <option value="checked-in">Checked In</option>
-                    <option value="cancelled">Cancelled</option>
-                    <option value="refund_requested">Refund Requested</option>
-                    <option value="refunded">Refunded</option>
-                </select>
-                <div className="search-bar" style={{ maxWidth: '300px', marginBottom: 0, flex: '2 1 200px' }}>
-                    <Search size={18} />
-                    <input 
-                        type="text" 
-                        placeholder="Search Event or ID..." 
-                        value={bookingSearch}
-                        onChange={(e) => setBookingSearch(e.target.value)}
-                    />
-                </div>
+              <select
+                className="form-input"
+                style={{ width: '150px', marginBottom: 0, height: '42px', padding: '0 1rem', flex: '1 1 150px' }}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="all">All Status</option>
+                <option value="booked">Booked</option>
+                <option value="checked-in">Checked In</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="refund_requested">Refund Requested</option>
+                <option value="refunded">Refunded</option>
+              </select>
+              <div className="search-bar" style={{ maxWidth: '300px', marginBottom: 0, flex: '2 1 200px' }}>
+                <Search size={18} />
+                <input
+                  type="text"
+                  placeholder="Search Event or ID..."
+                  value={bookingSearch}
+                  onChange={(e) => setBookingSearch(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
@@ -294,14 +332,10 @@ export default function UserDashboard({ user }) {
               </div>
             ) : (
               <div className="grid">
-                {bookings.filter(b => {
-                  const matchesSearch = b.eventName.toLowerCase().includes(bookingSearch.toLowerCase()) ||
-                    b.billId.toLowerCase().includes(bookingSearch.toLowerCase());
-                  const matchesStatus = statusFilter === 'all' || b.status === statusFilter;
-                  return matchesSearch && matchesStatus;
-                }).map(booking => (
-                  <div key={booking.id} className="receipt">
-                    <div className="receipt-header">
+                {filteredBookings.map(booking => (
+                  <div key={booking.id} className="receipt" style={{ padding: '2rem', borderRadius: '16px', background: 'var(--surface-raised)', border: '1px solid var(--border)', boxShadow: '0 10px 30px rgba(0,0,0,0.4)', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '5px', background: 'linear-gradient(90deg, var(--primary), var(--secondary))' }}></div>
+                    <div className="receipt-header" style={{ textAlign: 'center', marginBottom: '1.5rem', borderBottom: '1px dashed var(--border)', paddingBottom: '1.5rem' }}>
                       <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{booking.eventName}</h3>
                       <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block' }}>
                         Booked on {new Date(booking.bookingDate).toLocaleDateString()}
@@ -322,14 +356,14 @@ export default function UserDashboard({ user }) {
                         </span>
                       )}
                     </div>
-                    
+
                     <div className="receipt-row">
                       <span style={{ color: 'var(--text-muted)' }}>Bill ID:</span>
-                      <span 
-                        style={{ fontFamily: 'monospace', fontWeight: 600, cursor: 'pointer' }} 
+                      <span
+                        style={{ fontFamily: 'monospace', fontWeight: 600, cursor: 'pointer' }}
                         onClick={() => {
-                            navigator.clipboard.writeText(booking.billId);
-                            alert('Copied to clipboard: ' + booking.billId);
+                          navigator.clipboard.writeText(booking.billId);
+                          showToast('Copied to clipboard: ' + booking.billId, "info");
                         }}
                         title="Click to copy"
                       >
@@ -359,74 +393,77 @@ export default function UserDashboard({ user }) {
                       <span>Total Amount</span>
                       <span style={{ color: 'var(--primary)' }}>INR {booking.totalAmount}</span>
                     </div>
-                    
-                    <div style={{ margin: '2.5rem 0 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <div style={{ background: 'white', padding: '10px', borderRadius: '2px', marginBottom: '1rem', display: 'inline-block' }}>
-                         <QRCodeCanvas value={booking.billId} size={120} level={"H"} />
+
+                    <div style={{ margin: '2rem 0 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <div style={{ background: 'white', padding: '12px', borderRadius: '8px', marginBottom: '1rem', display: 'inline-block', boxShadow: '0 4px 20px rgba(255, 85, 0, 0.2)' }}>
+                        <Suspense fallback={<div style={{ width: '130px', height: '130px', background: '#eceff3', borderRadius: '8px' }} />}>
+                          <QRCodeCanvas value={booking.billId} size={130} level={"H"} />
+                        </Suspense>
                       </div>
                       {booking.status === 'checked-in' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--success)', fontWeight: 'bold' }}>
-                          <CheckCircle2 size={18} /> Ticket Checked In
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--success)', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                          <CheckCircle2 size={18} /> Verified Entry
                         </div>
                       )}
                       {booking.status === 'booked' && (
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center' }}>
-                          Show this QR code at the entrance
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', fontWeight: 500 }}>
+                          Scan at venue for quick entry
                         </p>
                       )}
                       {(booking.status === 'cancelled' || booking.status === 'refunded') && (
-                        <p style={{ color: 'var(--danger)', fontSize: '0.9rem', textAlign: 'center', fontWeight: 'bold' }}>
-                          Invalid Ticket
+                        <p style={{ color: 'var(--danger)', fontSize: '0.85rem', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                          Ticket Revoked
                         </p>
                       )}
                     </div>
 
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button 
-                          className="btn btn-secondary" 
-                          style={{ flex: 1 }}
-                          onClick={() => handleDownloadReceipt(booking)}
-                        >
-                          <Download size={16} /> Bill
-                        </button>
-                        <button 
-                          className="btn btn-secondary" 
-                          style={{ padding: '0.4rem', borderRadius: '2px' }}
-                          title="Delete from history"
-                          onClick={() => handleDeleteBooking(booking.id)}
-                        >
-                          <Trash2 size={16} color="var(--danger)" />
-                        </button>
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                        {booking.status === 'booked' && (
-                          <div style={{ display: 'flex', gap: '0.5rem', flex: 2 }}>
-                            <button 
-                                className="btn btn-danger" 
-                                style={{ flex: 1, padding: '0.5rem' }}
-                                onClick={() => handleCancelBooking(booking)}
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        className="btn btn-secondary"
+                        style={{ flex: 1 }}
+                        onClick={() => handleDownloadReceipt(booking)}
+                        disabled={downloadingBookingId === booking.id}
+                      >
+                        <Download size={16} /> {downloadingBookingId === booking.id ? 'Preparing...' : 'Bill'}
+                      </button>
+                      <button
+                        className="btn btn-secondary"
+                        style={{ padding: '0.4rem', borderRadius: '2px' }}
+                        title="Delete from history"
+                        onClick={() => handleDeleteBooking(booking.id)}
+                      >
+                        <Trash2 size={16} color="var(--danger)" />
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      {booking.status === 'booked' && (
+                        <div style={{ display: 'flex', gap: '0.5rem', flex: 2 }}>
+                          <button
+                            className="btn btn-danger"
+                            style={{ flex: 1, padding: '0.5rem' }}
+                            onClick={() => handleCancelBooking(booking)}
+                          >
+                            Cancel & Refund
+                          </button>
+                        </div>
+                      )}
+                      {booking.status === 'checked-in' && (
+                        (() => {
+                          const reviews = reviewsData || [];
+                          const hasReviewed = reviews.some(r => r.userId === user.id && r.eventId === booking.eventId);
+                          if (hasReviewed) return <span style={{ color: 'var(--success)', fontSize: '0.8rem', fontWeight: 'bold' }}>Already Reviewed</span>;
+                          return (
+                            <button
+                              className="btn btn-primary"
+                              style={{ flex: 1 }}
+                              onClick={() => handleOpenReview(booking)}
                             >
-                                Cancel & Refund
+                              <Star size={16} /> Review
                             </button>
-                          </div>
-                        )}
-                        {booking.status === 'checked-in' && (
-                          (() => {
-                            const reviews = getItem('oems_reviews') || [];
-                            const hasReviewed = reviews.some(r => r.userId === user.id && r.eventId === booking.eventId);
-                            if (hasReviewed) return <span style={{ color: 'var(--success)', fontSize: '0.8rem', fontWeight: 'bold' }}>Already Reviewed</span>;
-                            return (
-                              <button 
-                                className="btn btn-primary" 
-                                style={{ flex: 1 }}
-                                onClick={() => handleOpenReview(booking)}
-                              >
-                                <Star size={16} /> Review
-                              </button>
-                            );
-                          })()
-                        )}
-                      </div>
+                          );
+                        })()
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -440,13 +477,13 @@ export default function UserDashboard({ user }) {
           <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <UserIcon size={24} color="var(--primary)" /> Profile Information
           </h2>
-          
+
           <div className="card" style={{ marginBottom: '2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexWrap: 'wrap' }}>
               <div style={{ position: 'relative' }}>
-                <div style={{ width: '100px', height: '100px', background: 'var(--primary)', borderRadius: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', overflow: 'hidden', border: '3px solid white', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+                <div style={{ width: '100px', height: '100px', background: 'var(--primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', overflow: 'hidden', border: '4px solid var(--surface-raised)', boxShadow: '0 4px 20px rgba(255, 85, 0, 0.3)' }}>
                   {user.image ? (
-                    <img src={user.image} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={user.image} alt="Profile" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <UserIcon size={50} />
                   )}
@@ -462,10 +499,10 @@ export default function UserDashboard({ user }) {
                     <ShieldCheck size={14} style={{ marginRight: '4px' }} />
                     {user.role.toUpperCase()}
                   </span>
-                  <button className="btn btn-secondary" style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => setIsProfileModalOpen(true)}>
+                  <button className="btn btn-secondary" style={{ padding: '0.6rem 1.2rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem', borderRadius: '50px' }} onClick={() => setIsProfileModalOpen(true)}>
                     <Edit size={14} /> Edit Profile
                   </button>
-                  <button className="btn btn-danger" style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: 'none' }} onClick={handleDeleteAccount}>
+                  <button className="btn btn-danger" style={{ padding: '0.6rem 1.2rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: 'none', borderRadius: '50px' }} onClick={handleDeleteAccount}>
                     <Trash2 size={14} /> Delete Account
                   </button>
                 </div>
@@ -493,22 +530,22 @@ export default function UserDashboard({ user }) {
           </div>
         </div>
       )}
-      
+
       {isRefundModalOpen && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{maxWidth: '450px'}}>
+          <div className="modal-content" style={{ maxWidth: '450px' }}>
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                <div style={{ width: '60px', height: '60px', background: 'rgba(255, 49, 82, 0.1)', borderRadius: '0px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-                    <RefreshCcw size={30} color="var(--primary)" />
-                </div>
-                <h2 style={{ marginBottom: '0.5rem' }}>Request Refund</h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Please provide details for your refund of <strong>INR {selectedBookingForRefund?.totalAmount}</strong> for <strong>{selectedBookingForRefund?.eventName}</strong>.</p>
+              <div style={{ width: '60px', height: '60px', background: 'rgba(255, 49, 82, 0.1)', borderRadius: '0px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+                <RefreshCcw size={30} color="var(--primary)" />
+              </div>
+              <h2 style={{ marginBottom: '0.5rem' }}>Request Refund</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Please provide details for your refund of <strong>INR {selectedBookingForRefund?.totalAmount}</strong> for <strong>{selectedBookingForRefund?.eventName}</strong>.</p>
             </div>
-            
+
             <form onSubmit={handleRefundSubmit}>
               <div className="form-group">
                 <label className="form-label">Reason for Refund</label>
-                <textarea 
+                <textarea
                   required className="form-input" rows="3"
                   placeholder="e.g. Health issues, flight cancelled..."
                   value={refundForm.reason}
@@ -517,7 +554,7 @@ export default function UserDashboard({ user }) {
               </div>
               <div className="form-group">
                 <label className="form-label">Bank Account / Payment Details</label>
-                <textarea 
+                <textarea
                   required className="form-input" rows="3"
                   placeholder="Enter your bank name, A/C number or UPI ID for refund"
                   value={refundForm.bankDetails}
@@ -525,7 +562,7 @@ export default function UserDashboard({ user }) {
                 ></textarea>
               </div>
               <div style={{ padding: '1rem', background: 'rgba(255, 49, 82, 0.05)', borderRadius: '0px', display: 'flex', gap: '0.75rem', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-                <Info size={20} color="var(--primary)" style={{marginTop: '2px'}} />
+                <Info size={20} color="var(--primary)" style={{ marginTop: '2px' }} />
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Refunds are processed manually by our admin within 3-5 business days.</p>
               </div>
               <div style={{ display: 'flex', gap: '1rem' }}>
@@ -546,11 +583,11 @@ export default function UserDashboard({ user }) {
                 <label className="form-label">Rating</label>
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
                   {[1, 2, 3, 4, 5].map(num => (
-                    <button 
-                      key={num} 
+                    <button
+                      key={num}
                       type="button"
                       onClick={() => setReviewForm({ ...reviewForm, rating: num })}
-                      style={{ 
+                      style={{
                         background: 'none', border: 'none', cursor: 'pointer',
                         color: num <= reviewForm.rating ? '#f59e0b' : 'var(--text-muted)'
                       }}
@@ -562,7 +599,7 @@ export default function UserDashboard({ user }) {
               </div>
               <div className="form-group">
                 <label className="form-label">Your Comment</label>
-                <textarea 
+                <textarea
                   required className="form-input" rows="4"
                   placeholder="Tell us about your experience..."
                   value={reviewForm.comment}
@@ -579,23 +616,23 @@ export default function UserDashboard({ user }) {
       )}
       {isProfileModalOpen && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{maxWidth: '500px'}}>
+          <div className="modal-content" style={{ maxWidth: '500px' }}>
             <h2 style={{ marginBottom: '1.5rem' }}>Edit Profile</h2>
             <form onSubmit={handleUpdateProfile}>
               <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
                 <div style={{ width: '100px', height: '100px', background: '#f3f4f6', borderRadius: '2px', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '2px dashed var(--border)', position: 'relative' }}>
-                   {profileForm.image ? <img src={profileForm.image} style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : <UserIcon size={40} color="#9ca3af" />}
-                   <label style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--primary)', color: 'white', padding: '0.4rem', borderRadius: '2px', cursor: 'pointer' }}>
-                     <Camera size={14} />
-                     <input type="file" hidden accept="image/*" onChange={handleProfileImageChange} />
-                   </label>
+                  {profileForm.image ? <img src={profileForm.image} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <UserIcon size={40} color="#9ca3af" />}
+                  <label style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--primary)', color: 'white', padding: '0.4rem', borderRadius: '2px', cursor: 'pointer' }}>
+                    <Camera size={14} />
+                    <input type="file" hidden accept="image/*" onChange={handleProfileImageChange} />
+                  </label>
                 </div>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Change Profile Photo</p>
               </div>
 
               <div className="form-group">
                 <label className="form-label">Full Name</label>
-                <input 
+                <input
                   type="text" required className="form-input"
                   value={profileForm.name}
                   onChange={e => setProfileForm({ ...profileForm, name: e.target.value })}
@@ -604,7 +641,7 @@ export default function UserDashboard({ user }) {
 
               <div className="form-group">
                 <label className="form-label">Email Address</label>
-                <input 
+                <input
                   type="email" required className="form-input"
                   value={profileForm.email}
                   onChange={e => setProfileForm({ ...profileForm, email: e.target.value })}
@@ -614,13 +651,13 @@ export default function UserDashboard({ user }) {
               <div className="form-group">
                 <label className="form-label">Change Password</label>
                 <div style={{ position: 'relative' }}>
-                  <input 
-                    type={showPassword ? 'text' : 'password'} 
+                  <input
+                    type={showPassword ? 'text' : 'password'}
                     className="form-input"
                     value={profileForm.password}
                     onChange={e => setProfileForm({ ...profileForm, password: e.target.value })}
                   />
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}

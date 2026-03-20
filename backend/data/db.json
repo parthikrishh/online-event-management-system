@@ -1,0 +1,140 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "name": "Admin User",
+      "email": "admin@test.com",
+      "password": "admin123",
+      "role": "admin",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "2",
+      "name": "Test User",
+      "email": "user@test.com",
+      "password": "user123",
+      "role": "user",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "events": [
+    {
+      "id": "evt_1001",
+      "name": "Neon Beats Live",
+      "description": "An immersive electronic music night with top DJs.",
+      "date": "2026-05-10",
+      "time": "19:30",
+      "location": "Bengaluru Arena, Bengaluru",
+      "price": 1499,
+      "vipPrice": 2499,
+      "category": "Music Concerts",
+      "capacity": 50,
+      "availableCapacity": 50,
+      "status": "approved",
+      "image": "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&q=80&w=800",
+      "revenue": 0,
+      "ticketsSold": 0,
+      "avgRating": "N/A",
+      "refundCount": 0
+    },
+    {
+      "id": "evt_1002",
+      "name": "FutureStack Summit",
+      "description": "A one-day tech summit with talks on AI, cloud, and product engineering.",
+      "date": "2026-06-15",
+      "time": "10:00",
+      "location": "Tech Convention Center, Chennai",
+      "price": 999,
+      "vipPrice": 1799,
+      "category": "Technology",
+      "capacity": 49,
+      "availableCapacity": 49,
+      "status": "approved",
+      "image": "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&q=80&w=800",
+      "revenue": 0,
+      "ticketsSold": 0,
+      "avgRating": "N/A",
+      "refundCount": 0
+    },
+    {
+      "id": "evt_1003",
+      "name": "Street Food Carnival",
+      "description": "Taste iconic dishes from 40+ food creators and street chefs.",
+      "date": "2026-04-20",
+      "time": "17:00",
+      "location": "Riverside Grounds, Hyderabad",
+      "price": 499,
+      "vipPrice": 899,
+      "category": "Food Festival",
+      "capacity": 100,
+      "availableCapacity": 100,
+      "status": "approved",
+      "image": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&q=80&w=800",
+      "revenue": 0,
+      "ticketsSold": 0,
+      "avgRating": "N/A",
+      "refundCount": 0
+    }
+  ],
+  "bookings": [],
+  "refunds": [],
+  "reviews": [],
+  "logs": [
+    {
+      "id": "log_1773989229906_bnjo",
+      "action": "Event Updated",
+      "details": "Modified/Added \"Street Food Carnival\".",
+      "timestamp": "2026-03-20T06:47:09.906Z",
+      "date": "2026-03-20T06:47:09.906Z"
+    },
+    {
+      "id": "log_1773989480098_gtbj",
+      "action": "Event Updated",
+      "details": "Modified/Added \"Street Food Carnival\".",
+      "timestamp": "2026-03-20T06:51:20.098Z",
+      "date": "2026-03-20T06:51:20.098Z"
+    },
+    {
+      "id": "log_1773989486512_oc4r",
+      "action": "Event Updated",
+      "details": "Modified/Added \"Neon Beats Live\".",
+      "timestamp": "2026-03-20T06:51:26.512Z",
+      "date": "2026-03-20T06:51:26.512Z"
+    },
+    {
+      "id": "log_1773989493019_r919",
+      "action": "Event Updated",
+      "details": "Modified/Added \"FutureStack Summit\".",
+      "timestamp": "2026-03-20T06:51:33.019Z",
+      "date": "2026-03-20T06:51:33.019Z"
+    },
+    {
+      "id": "log_1773989695409_1ymx",
+      "action": "Refund Deleted",
+      "details": "Removed refund record ID: rfd_1773989568014.",
+      "timestamp": "2026-03-20T06:54:55.409Z",
+      "date": "2026-03-20T06:54:55.409Z"
+    },
+    {
+      "id": "log_1773989728827_h8ko",
+      "action": "Event Updated",
+      "details": "Modified/Added \"Neon Beats Live\".",
+      "timestamp": "2026-03-20T06:55:28.827Z",
+      "date": "2026-03-20T06:55:28.827Z"
+    },
+    {
+      "id": "log_1773989732929_55te",
+      "action": "Event Updated",
+      "details": "Modified/Added \"Street Food Carnival\".",
+      "timestamp": "2026-03-20T06:55:32.929Z",
+      "date": "2026-03-20T06:55:32.929Z"
+    },
+    {
+      "id": "log_1773989742764_4z4u",
+      "action": "Event Updated",
+      "details": "Modified/Added \"FutureStack Summit\".",
+      "timestamp": "2026-03-20T06:55:42.764Z",
+      "date": "2026-03-20T06:55:42.764Z"
+    }
+  ]
+}

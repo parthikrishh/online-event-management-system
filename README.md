@@ -143,6 +143,43 @@ npm run build
 
 Or connect your **GitHub repository directly to Netlify** for automatic deployments.
 
+### Real-time multi-user deployment (recommended)
+
+If you want 100+ users to see shared updates in near real-time:
+
+1. Host frontend on Netlify.
+2. Host backend separately (Render/Railway/Fly/VM) so `backend/server.js` is always running.
+3. Set frontend env var on Netlify:
+
+```bash
+VITE_API_BASE_URL=https://your-backend-domain.com
+```
+
+4. Keep backend CORS enabled (already configured).
+
+The frontend subscribes to backend SSE at `/api/stream`, and all data writes broadcast updates to connected clients.
+
+## ✅ Quick Deploy (Copy This)
+
+If you are not sure how to deploy, use this exact flow:
+
+1. Push this repo to GitHub.
+2. Deploy backend on Render:
+	- New -> Web Service -> connect this repo
+	- Render auto-detects `render.yaml`
+	- Wait until service is live
+	- Copy backend URL (example: `https://eventx-api.onrender.com`)
+3. Deploy frontend on Netlify:
+	- New site from Git -> connect same repo
+	- Netlify auto-detects `netlify.toml`
+	- In Site Settings -> Environment Variables, add:
+	  - `VITE_API_BASE_URL` = your backend URL
+	- Trigger redeploy
+4. Verify:
+	- Backend health: `https://your-backend-domain/api/health`
+	- Frontend opens and logs in
+	- Open two browsers and create/update a booking in one browser; the other should refresh automatically.
+
 ---
 
 ## 🙌 Credits

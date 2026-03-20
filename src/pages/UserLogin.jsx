@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { loginUser, registerUser, resetPassword } from '../utils/storage';
-import { UserPlus, LogIn, ShieldAlert, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { setItem } from '../utils/storage';
+import { useMutation, api } from '../services/apiService';
+import { ShieldAlert, Eye, EyeOff, Mail, Lock, UserRound } from 'lucide-react';
+import { prefetchRoutes } from '../utils/routePrefetch';
 
 export default function UserLogin({ setUser }) {
   const navigate = useNavigate();
+  const registerMutation = useMutation(api.users.create);
   const [activeTab, setActiveTab] = useState('login'); // 'login', 'register', or 'forgot'
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -20,7 +23,7 @@ export default function UserLogin({ setUser }) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccessMsg('');
@@ -30,55 +33,70 @@ export default function UserLogin({ setUser }) {
         setError('Please fill all fields');
         return;
       }
-      const user = registerUser(formData);
-      if (user) {
-        setUser(user);
-        navigate('/');
-      } else {
-        setError('Email already exists');
+      try {
+        const user = await registerMutation({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          role: 'user',
+          id: Date.now().toString(),
+          createdAt: new Date().toISOString()
+        });
+        if (user) {
+          const newUser = {
+            name: formData.name,
+            email: formData.email,
+            password: formData.password,
+            role: 'user',
+            id: user.id || Date.now().toString()
+          };
+          setItem('oems_current_user', newUser);
+          setUser(newUser);
+          navigate('/');
+        }
+      } catch (err) {
+        console.error("Registration failed", err);
+        setError("Registration failed. Email might already be in use.");
       }
     } else if (activeTab === 'forgot') {
-      if (!formData.email || !formData.password) {
-        setError('Please enter your email and a new password');
-        return;
-      }
-      const success = resetPassword(formData.email, formData.password);
-      if (success) {
-        setSuccessMsg('Password reset successful! You can now login.');
-        setActiveTab('login');
-        setFormData({ ...formData, password: '' });
-      } else {
-        setError('Email not found. Please register.');
-      }
+      setError('Password reset is currently disabled in real-time mode.');
     } else {
       if (!formData.email || !formData.password) {
         setError('Please enter email and password');
         return;
       }
-      const user = loginUser(formData.email, formData.password);
-      if (user) {
-        if (user.role === 'admin') {
-          setError('Admin accounts cannot log in here. Please use Admin Portal.');
-          // Don't set user
+      try {
+        const userFound = await api.users.getByEmail({ email: formData.email });
+        if (userFound && userFound.password === formData.password) {
+          if (userFound.role === 'admin') {
+            setError('Admin accounts cannot log in here. Please use Admin Portal.');
+          } else {
+            setItem('oems_current_user', userFound);
+            setUser(userFound);
+            prefetchRoutes(['events', 'userDashboard'], { idle: true });
+            navigate('/');
+            return;
+          }
         } else {
-          setUser(user);
-          navigate('/');
+          setError('Invalid credentials');
         }
-      } else {
-        setError('Invalid credentials');
+      } catch (err) {
+        console.error("Auth failed", err);
+        setError("Authentication failed.");
       }
     }
   };
 
   return (
-    <div className="auth-container">
-      <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-        <h2 className="page-title" style={{ fontSize: '1.8rem', marginBottom: '0', background: 'linear-gradient(135deg, var(--primary), #FF7B8F)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 950, letterSpacing: '-1px' }}>
-          EVENTX USER
-        </h2>
-      </div>
+    <section className="auth-page">
+      <div className="auth-container">
+        <div className="auth-head">
+          <p className="auth-kicker">EventX User Portal</p>
+          <h2>Welcome back</h2>
+          <p>The best events are just one login away.</p>
+        </div>
 
-      <div className="auth-tabs" style={{ marginBottom: '0.75rem', padding: '0.2rem' }}>
+      <div className="auth-tabs" style={{ marginBottom: '1rem' }}>
         <div 
           className={`auth-tab ${activeTab === 'login' ? 'active' : ''}`}
           onClick={() => { setActiveTab('login'); setError(''); setSuccessMsg(''); }}
@@ -93,37 +111,44 @@ export default function UserLogin({ setUser }) {
         </div>
       </div>
       
-      {error && <div style={{ color: 'white', marginBottom: '1rem', textAlign: 'center', background: 'var(--danger)', padding: '0.75rem', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.85rem' }}>{error}</div>}
-      {successMsg && <div style={{ color: 'white', marginBottom: '1rem', textAlign: 'center', background: 'var(--success)', padding: '0.75rem', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.85rem' }}>{successMsg}</div>}
+      {error && <div className="auth-alert auth-alert-error">{error}</div>}
+      {successMsg && <div className="auth-alert auth-alert-success">{successMsg}</div>}
 
       <form onSubmit={handleSubmit}>
         {activeTab === 'register' && (
           <div className="form-group">
             <label className="form-label">Full Name</label>
-            <input 
-              type="text" 
-              name="name"
-              className="form-input"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="John Doe"
-            />
+            <div className="input-with-icon">
+              <UserRound size={16} />
+              <input 
+                type="text" 
+                name="name"
+                className="form-input"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="John Doe"
+              />
+            </div>
           </div>
         )}
         <div className="form-group">
           <label className="form-label">Email Address</label>
-          <input 
-            type="email" 
-            name="email"
-            className="form-input"
-            value={formData.email}
-            onChange={handleChange}
-            placeholder="john@example.com"
-          />
+          <div className="input-with-icon">
+            <Mail size={16} />
+            <input 
+              type="email" 
+              name="email"
+              className="form-input"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="john@example.com"
+            />
+          </div>
         </div>
         <div className="form-group">
           <label className="form-label">{activeTab === 'forgot' ? 'New Password' : 'Password'}</label>
-          <div style={{ position: 'relative' }}>
+          <div className="input-with-icon">
+            <Lock size={16} />
             <input 
               type={showPassword ? "text" : "password"} 
               name="password"
@@ -131,46 +156,30 @@ export default function UserLogin({ setUser }) {
               value={formData.password}
               onChange={handleChange}
               placeholder="••••••••"
-              style={{ paddingRight: '3rem' }}
+              style={{ paddingRight: '2.5rem' }}
             />
             <button 
               type="button" 
               onClick={() => setShowPassword(!showPassword)}
-              style={{ 
-                position: 'absolute', 
-                right: '10px', 
-                top: '50%', 
-                transform: 'translateY(-50%)', 
-                background: 'none', 
-                border: 'none', 
-                color: 'var(--text-muted)', 
-                display: 'flex', 
-                alignItems: 'center' 
-              }}
+              className="password-toggle"
             >
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
         </div>
-        <button type="submit" className="btn" style={{ 
+        <button type="submit" className="btn btn-primary" style={{ 
           width: '100%', 
-          marginTop: '1.5rem', 
-          padding: '1rem', 
-          background: 'var(--primary)', 
-          color: 'white',
-          fontSize: '1rem',
-          borderRadius: '2px',
-          fontWeight: '900',
-          letterSpacing: '1px'
+          marginTop: '1rem'
         }}>
-          {activeTab === 'login' ? 'LOGIN' : activeTab === 'register' ? 'REGISTER' : 'RESET PASSWORD'}
+          {activeTab === 'login' ? 'Sign In' : activeTab === 'register' ? 'Create Account' : 'Reset Password'}
         </button>
       </form>
 
       {activeTab === 'login' && (
-        <div style={{ marginTop: '1rem', textAlign: 'center', background: 'rgba(0, 210, 255, 0.1)', borderRadius: '0px', padding: '0.8rem', border: '1px solid rgba(0, 210, 255, 0.3)' }}>
-          <p style={{ margin: 0, fontSize: '0.95rem', color: '#ffffff', fontWeight: '900', letterSpacing: '0.8px', textShadow: '0 0 10px rgba(0, 210, 255, 0.3)' }}>
-            DEMO: user@event.com / Password: user
+        <div className="auth-demo-block">
+          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            DEMO ACCESS<br />
+            <strong style={{ color: 'var(--text-main)' }}>user@test.com / user123</strong>
           </p>
         </div>
       )}
@@ -187,11 +196,12 @@ export default function UserLogin({ setUser }) {
         </div>
       )}
 
-      <div style={{ marginTop: '0.75rem', textAlign: 'center', borderTop: '1px dashed var(--border)', paddingTop: '0.5rem' }}>
-        <Link to="/admin-login" style={{ color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontWeight: '600', fontSize: '0.8rem' }}>
+      <div className="auth-foot-link">
+        <Link to="/admin-login" style={{ color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontWeight: '600', fontSize: '0.85rem' }}>
           <ShieldAlert size={14} /> Admin Portal
         </Link>
       </div>
-    </div>
+      </div>
+    </section>
   );
 }

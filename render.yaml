@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: eventx-api
+    env: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm run server
+    healthCheckPath: /api/health
+    autoDeploy: true
