@@ -1,13 +1,14 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
 import { useMutation, api } from './services/apiService';
 import Toast from './components/Toast';
 import { ToastProvider } from './context/ToastContext';
 import RouteLoader from './components/RouteLoader';
 import PageTransition from './components/PageTransition';
+import useIsMobile from './hooks/useIsMobile';
+import DesktopLayout from './components/layout/DesktopLayout';
+import MobileLayout from './components/layout/MobileLayout';
 import {
   loadAdminDashboard,
   loadAdminLogin,
@@ -87,6 +88,7 @@ function App() {
     }
   });
   const [toast, setToast] = useState(null);
+  const isMobile = useIsMobile(768);
   const seed = useMutation(api.events.seed);
 
   useEffect(() => {
@@ -112,22 +114,33 @@ function App() {
   return (
     <ToastProvider onToastChange={(t) => setToast(t)}>
       <Router>
-        <div className="app-container">
-          <Navbar user={user} setUser={setUser} />
-          {toast && (
-            <div className="toast-container">
-              <Toast 
-                message={toast.message} 
-                type={toast.type} 
-                onClose={() => setToast(null)} 
-              />
-            </div>
-          )}
-          <main className="main-content">
+        {isMobile ? (
+          <MobileLayout user={user} setUser={setUser}>
+            {toast && (
+              <div className="toast-container">
+                <Toast
+                  message={toast.message}
+                  type={toast.type}
+                  onClose={() => setToast(null)}
+                />
+              </div>
+            )}
             <AnimatedRoutes user={user} setUser={setUser} />
-          </main>
-        <Footer />
-      </div>
+          </MobileLayout>
+        ) : (
+          <DesktopLayout user={user} setUser={setUser}>
+            {toast && (
+              <div className="toast-container">
+                <Toast
+                  message={toast.message}
+                  type={toast.type}
+                  onClose={() => setToast(null)}
+                />
+              </div>
+            )}
+            <AnimatedRoutes user={user} setUser={setUser} />
+          </DesktopLayout>
+        )}
     </Router>
     </ToastProvider>
   );
