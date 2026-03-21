@@ -297,111 +297,113 @@ export default function Home({ user }) {
 
   return (
     <div className="home-page">
-      <section className="hero-panel">
-        <div className="hero-copy">
-          <p className="hero-kicker">Live entertainment, curated for you</p>
-          <h1>Book events like a pro</h1>
-          <p>Find concerts, comedy, food festivals, meetups, and more with a cleaner, faster booking journey.</p>
-        </div>
-
-        <div className="search-bar hero-search">
-          <Search size={18} />
-          <input
-            type="text"
-            placeholder="Search by event, artist, city"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-          />
-        </div>
-      </section>
-
-      <section className="home-section-head">
-        <div>
-          <h2>Upcoming events</h2>
-          <p>Discover what is trending this week.</p>
-        </div>
-        <div className="category-filter">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              className={`filter-chip ${activeCategory === cat ? 'active' : ''}`}
-              onClick={() => setActiveCategory(cat)}
-              type="button"
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <MotionDiv
-        className="grid events-grid"
-        initial="hidden"
-        animate="visible"
-        variants={{
-          hidden: { opacity: 0 },
-          visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
-        }}
-      >
-        {eventsData === undefined && !eventsError && Array.from({ length: 6 }).map((_, idx) => <SkeletonCard key={idx} />)}
-
-        {eventsError && (
-          <div className="empty-state">
-            <AlertTriangle size={28} />
-            <h3>Unable to load events</h3>
-            <p>Please check your network and try again.</p>
+      <div className="home-page-inner">
+        <section className="hero-panel">
+          <div className="hero-copy">
+            <p className="hero-kicker">Live entertainment, curated for you</p>
+            <h1>Book events like a pro</h1>
+            <p>Find concerts, comedy, food festivals, meetups, and more with a cleaner, faster booking journey.</p>
           </div>
-        )}
 
-        {eventsData !== undefined && !eventsError && upcomingEvents.map((event) => (
-          <motion.div key={event.id} variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}>
-            <EventCard
-              event={event}
-              isWishlisted={wishlist.includes(event.id)}
-              onToggleWishlist={(evt) => handleWishlist(evt, event.id)}
-              onBook={() => handleBookClick(event)}
-              onPrefetch={() => prefetchRoutes(['eventDetails', 'booking'], { idle: true })}
+          <div className="search-bar hero-search">
+            <Search size={18} />
+            <input
+              type="text"
+              placeholder="Search by event, artist, city"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
             />
-          </motion.div>
-        ))}
-
-        {eventsData !== undefined && !eventsError && upcomingEvents.length === 0 && (
-          <div className="empty-state">
-            <CalendarDays size={28} />
-            <h3>No matching events</h3>
-            <p>Try another search term or category filter.</p>
           </div>
-        )}
-      </MotionDiv>
+        </section>
 
-      {activeCategory === 'All' && pastEvents.length > 0 && (
-        <RevealOnScroll>
-          <section className="past-events">
-          <div className="home-section-head">
-            <div>
-              <h2>Past events</h2>
-              <p>Great moments from recently completed events.</p>
-            </div>
+        <section className="home-section-head">
+          <div>
+            <h2>Upcoming events</h2>
+            <p>Discover what is trending this week.</p>
           </div>
-          <div className="grid events-grid">
-            {pastEvents.map((event) => (
-              <article className="event-card event-card--past" key={event.id}>
-                <div className="event-card__media" style={{ backgroundImage: event.image ? `url(${event.image})` : undefined }}>
-                  <span className="event-chip">Completed</span>
-                </div>
-                <div className="event-card__body">
-                  <h3>{event.name}</h3>
-                  <div className="event-card__meta">
-                    <span><CalendarDays size={16} /> {new Date(event.date).toLocaleDateString()}</span>
-                  </div>
-                  <p className="event-card__desc">{event.description}</p>
-                </div>
-              </article>
+          <div className="category-filter">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                className={`filter-chip ${activeCategory === cat ? 'active' : ''}`}
+                onClick={() => setActiveCategory(cat)}
+                type="button"
+              >
+                {cat}
+              </button>
             ))}
           </div>
-          </section>
-        </RevealOnScroll>
-      )}
+        </section>
+
+        <MotionDiv
+          className="grid events-grid"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
+          }}
+        >
+          {eventsData === undefined && !eventsError && Array.from({ length: 6 }).map((_, idx) => <SkeletonCard key={idx} />)}
+
+          {eventsError && (
+            <div className="empty-state">
+              <AlertTriangle size={28} />
+              <h3>Unable to load events</h3>
+              <p>Please check your network and try again.</p>
+            </div>
+          )}
+
+          {eventsData !== undefined && !eventsError && upcomingEvents.map((event) => (
+            <motion.div key={event.id} variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}>
+              <EventCard
+                event={event}
+                isWishlisted={wishlist.includes(event.id)}
+                onToggleWishlist={(evt) => handleWishlist(evt, event.id)}
+                onBook={() => handleBookClick(event)}
+                onPrefetch={() => prefetchRoutes(['eventDetails', 'booking'], { idle: true })}
+              />
+            </motion.div>
+          ))}
+
+          {eventsData !== undefined && !eventsError && upcomingEvents.length === 0 && (
+            <div className="empty-state">
+              <CalendarDays size={28} />
+              <h3>No matching events</h3>
+              <p>Try another search term or category filter.</p>
+            </div>
+          )}
+        </MotionDiv>
+
+        {activeCategory === 'All' && pastEvents.length > 0 && (
+          <RevealOnScroll>
+            <section className="past-events">
+            <div className="home-section-head">
+              <div>
+                <h2>Past events</h2>
+                <p>Great moments from recently completed events.</p>
+              </div>
+            </div>
+            <div className="grid events-grid">
+              {pastEvents.map((event) => (
+                <article className="event-card event-card--past" key={event.id}>
+                  <div className="event-card__media" style={{ backgroundImage: event.image ? `url(${event.image})` : undefined }}>
+                    <span className="event-chip">Completed</span>
+                  </div>
+                  <div className="event-card__body">
+                    <h3>{event.name}</h3>
+                    <div className="event-card__meta">
+                      <span><CalendarDays size={16} /> {new Date(event.date).toLocaleDateString()}</span>
+                    </div>
+                    <p className="event-card__desc">{event.description}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+            </section>
+          </RevealOnScroll>
+        )}
+        </div>
 
       <AnimatePresence>
         {isModalOpen && modalEvent && (
