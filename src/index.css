@@ -35,9 +35,11 @@ html,
 body,
 #root {
   width: 100%;
+  max-width: 100%;
   min-height: 100%;
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
 }
 
 body {
@@ -1967,9 +1969,11 @@ th {
 /* Separate mobile app shell */
 .mobile-layout {
   min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
   background: linear-gradient(180deg, #fff8f3 0%, #f7f9fd 22%, #f6f8fc 100%);
   color: var(--text-main);
-  overflow-x: clip;
+  overflow-x: hidden;
 }
 
 .mobile-topbar {
@@ -2126,12 +2130,20 @@ th {
 }
 
 .mobile-main {
-  padding: 12px 12px 84px;
+  width: 100%;
+  max-width: 100%;
+  padding: 12px 12px calc(84px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .mobile-main-content {
   width: 100% !important;
+  max-width: 100% !important;
   margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .mobile-bottom-nav {
@@ -2184,6 +2196,38 @@ th {
 }
 
 @media (max-width: 768px) {
+  .mobile-layout,
+  .mobile-layout * {
+    box-sizing: border-box;
+  }
+
+  .mobile-layout {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .mobile-layout .main-content,
+  .mobile-layout .mobile-main,
+  .mobile-layout .mobile-main-content,
+  .mobile-layout .app-container,
+  .mobile-layout .admin-content-area,
+  .mobile-layout .analytics-view,
+  .mobile-layout .home-page,
+  .mobile-layout .event-details-page,
+  .mobile-layout .auth-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: hidden;
+  }
+
+  .mobile-layout [style*='width:'],
+  .mobile-layout [style*='max-width:'] {
+    max-width: 100% !important;
+  }
+
   .mobile-layout .grid,
   .mobile-layout .analytics-split,
   .mobile-layout .booking-meta-grid,
@@ -2209,6 +2253,8 @@ th {
   .mobile-layout input,
   .mobile-layout textarea {
     min-height: 44px;
+    width: 100%;
+    max-width: 100%;
   }
 
   .mobile-layout .btn,
@@ -2278,6 +2324,32 @@ th {
 
   .mobile-layout .search-bar {
     width: 100%;
+    max-width: 100%;
+  }
+
+  .mobile-layout .modal-content,
+  .mobile-layout .modal-overlay,
+  .mobile-layout .table-container,
+  .mobile-layout .admin-table-container,
+  .mobile-layout .seat-map-wrap,
+  .mobile-layout .event-card,
+  .mobile-layout .receipt,
+  .mobile-layout .admin-card,
+  .mobile-layout .card {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .mobile-layout .seat-row {
+    grid-template-columns: 20px repeat(10, minmax(0, 1fr));
+    max-width: 100%;
+  }
+
+  .mobile-layout .mobile-bottom-nav,
+  .mobile-layout .mobile-topbar {
+    width: 100%;
+    max-width: 100%;
   }
 
   .mobile-layout .event-card__body,
@@ -2291,6 +2363,7 @@ th {
   .mobile-layout small,
   .mobile-layout td {
     font-size: 0.9rem;
+    word-break: break-word;
   }
 
   .mobile-layout h1 {
