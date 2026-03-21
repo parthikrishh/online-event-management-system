@@ -630,11 +630,6 @@ button {
   gap: 1.25rem;
 }
 
-.home-page-inner {
-  display: grid;
-  gap: 1rem;
-}
-
 .hero-panel {
   border-radius: var(--radius-lg);
   background:
@@ -721,7 +716,6 @@ button {
   background: var(--surface);
   box-shadow: var(--shadow-sm);
   transition: transform var(--transition), box-shadow var(--transition);
-  width: 100%;
 }
 
 .event-card:hover {
@@ -988,10 +982,6 @@ button {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.events-grid > * {
-  min-width: 0;
 }
 
 .event-details-page {
@@ -2194,119 +2184,94 @@ th {
 }
 
 @media (max-width: 768px) {
-  .home-page {
+  .mobile-layout .events-page {
     width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
-  }
-
-  .home-page-inner {
-    width: 100%;
-    max-width: 100%;
-    padding-inline: 4px;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    display: grid;
     gap: 1rem;
+    overflow-x: clip;
   }
 
-  .hero-panel,
-  .home-section-head,
-  .events-grid,
-  .past-events {
+  .mobile-layout .events-page .events-banner {
     width: 100%;
     max-width: 100%;
-    margin: 0;
-  }
-
-  .hero-panel {
-    border-radius: 14px;
     padding: 1rem;
+    border-radius: 14px;
+    overflow: hidden;
+    box-sizing: border-box;
   }
 
-  .hero-search {
-    margin-top: 0.75rem;
+  .mobile-layout .events-page .events-section-head,
+  .mobile-layout .events-page .events-grid-main,
+  .mobile-layout .events-page .events-past-section,
+  .mobile-layout .events-page .events-past-section .events-grid {
     width: 100%;
-  }
-
-  .home-section-head {
-    gap: 0.8rem;
-  }
-
-  .category-filter {
-    overflow: visible;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    padding-bottom: 0;
-  }
-
-  .filter-chip {
     max-width: 100%;
   }
 
-  .events-grid {
-    gap: 1rem;
-  }
-
-  .event-card {
-    border-radius: 14px;
-    box-shadow: 0 8px 20px rgba(21, 30, 49, 0.1);
-    overflow: hidden;
-    margin: 0;
-  }
-
-  .event-card__media,
-  .event-card__img-wrap {
-    min-height: 160px;
-    height: 160px;
-  }
-
-  .event-card__img {
+  .mobile-layout .events-page .events-grid > *,
+  .mobile-layout .events-page .events-grid .event-card,
+  .mobile-layout .events-page .events-grid .event-card > * {
     width: 100%;
-    height: 160px;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .mobile-layout .events-page .event-card {
+    border-radius: 0.85rem;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+  }
+
+  .mobile-layout .events-page .event-card__media {
+    width: 100%;
+    height: 10rem;
+    min-height: 10rem;
+    overflow: hidden;
+  }
+
+  .mobile-layout .events-page .event-card__img-wrap,
+  .mobile-layout .events-page .event-card__img {
+    width: 100%;
+    height: 100%;
+  }
+
+  .mobile-layout .events-page .event-card__img {
     object-fit: cover;
   }
 
-  .event-card__body {
-    padding: 0.9rem;
-    gap: 0.55rem;
-  }
-
-  .event-card__footer {
-    gap: 0.55rem;
-  }
-
-  .event-card__cta {
+  .mobile-layout .events-page .event-card__footer {
     width: 100%;
-    margin-left: 0;
-    min-height: 44px;
-    padding: 0.68rem 0.9rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .home-page-inner {
-    padding-inline: 2px;
+    max-width: 100%;
+    margin: 0;
+    display: grid;
+    gap: 0.55rem;
   }
 
-  .hero-panel {
-    padding: 0.9rem;
-  }
-
-  .category-filter {
-    gap: 0.45rem;
-  }
-
-  .filter-chip {
-    font-size: 0.8rem;
+  .mobile-layout .events-page .event-card__availability {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
     padding: 0.45rem 0.65rem;
+    justify-content: center;
+    border-radius: 10px;
   }
-}
 
-@media (min-width: 481px) and (max-width: 768px) {
-  .home-page-inner {
-    padding-inline: 6px;
+  .mobile-layout .events-page .event-card__cta {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    min-height: 44px;
   }
-}
 
-@media (max-width: 768px) {
+  .mobile-layout .events-page .search-bar,
+  .mobile-layout .events-page .category-filter {
+    width: 100%;
+    max-width: 100%;
+  }
+
   .mobile-layout .grid,
   .mobile-layout .analytics-split,
   .mobile-layout .booking-meta-grid,
