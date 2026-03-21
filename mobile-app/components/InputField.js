@@ -1,6 +1,7 @@
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors } from '../constants/theme';
+import { useResponsive } from '../constants/responsive';
 
 export default function InputField({
   label,
@@ -13,13 +14,21 @@ export default function InputField({
   numberOfLines = 1,
   keyboardType = 'default',
 }) {
+  const { scale } = useResponsive();
+
   return (
-    <View style={styles.container}>
-      {!!label && <Text style={styles.label}>{label}</Text>}
-      <View style={[styles.inputWrap, multiline && styles.inputWrapMulti]}>
-        <Icon name={icon} size={18} color={colors.muted} style={styles.icon} />
+    <View style={[styles.container, { gap: scale(8) }]}>
+      {!!label && <Text style={[styles.label, { fontSize: scale(12) }]}>{label}</Text>}
+      <View
+        style={[
+          styles.inputWrap,
+          { borderRadius: scale(14), minHeight: scale(50), paddingHorizontal: scale(11) },
+          multiline && [styles.inputWrapMulti, { minHeight: scale(108), paddingTop: scale(9) }],
+        ]}
+      >
+        <Icon name={icon} size={scale(17)} color={colors.muted} style={[styles.icon, { marginRight: scale(7), marginTop: scale(2) }]} />
         <TextInput
-          style={[styles.input, multiline && styles.inputMulti]}
+          style={[styles.input, { fontSize: scale(14) }, multiline && [styles.inputMulti, { minHeight: scale(92) }]]}
           placeholder={placeholder}
           placeholderTextColor="#98A2B3"
           value={value}
@@ -35,40 +44,27 @@ export default function InputField({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    gap: 8,
-  },
+  container: {},
   label: {
-    fontSize: 13,
     color: colors.muted,
     fontWeight: '600',
   },
   inputWrap: {
     backgroundColor: colors.surface,
-    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 50,
-    paddingHorizontal: 12,
   },
   inputWrapMulti: {
     alignItems: 'flex-start',
-    paddingTop: 10,
-    minHeight: 110,
   },
-  icon: {
-    marginRight: 8,
-    marginTop: 2,
-  },
+  icon: {},
   input: {
     flex: 1,
-    fontSize: 15,
     color: colors.black,
   },
   inputMulti: {
     textAlignVertical: 'top',
-    minHeight: 95,
   },
 });

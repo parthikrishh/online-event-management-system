@@ -3,38 +3,41 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import HeaderBar from '../components/HeaderBar';
 import CustomButton from '../components/CustomButton';
 import { colors } from '../constants/theme';
+import { useResponsive } from '../constants/responsive';
 
 export default function ProfileScreen({ navigation }) {
+  const { scale } = useResponsive();
+
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.content}>
+      <View style={[styles.content, { padding: scale(12), gap: scale(12) }]}>
         <HeaderBar title="Profile" subtitle="Your account and preferences" />
 
-        <View style={styles.profileCard}>
-          <View style={styles.avatar}>
-            <Icon name="account" size={44} color={colors.white} />
+        <View style={[styles.profileCard, { borderRadius: scale(20), padding: scale(16) }]}>
+          <View style={[styles.avatar, { width: scale(84), height: scale(84), borderRadius: scale(42) }]}>
+            <Icon name="account" size={scale(42)} color={colors.white} />
           </View>
 
-          <Text style={styles.name}>Parthik User</Text>
-          <Text style={styles.email}>parthik@example.com</Text>
+          <Text style={[styles.name, { marginTop: scale(11), fontSize: scale(21) }]}>Parthik User</Text>
+          <Text style={[styles.email, { marginTop: scale(4), fontSize: scale(13) }]}>parthik@example.com</Text>
 
-          <View style={styles.statsRow}>
+          <View style={[styles.statsRow, { marginTop: scale(16) }]}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>12</Text>
-              <Text style={styles.statLabel}>Joined</Text>
+              <Text style={[styles.statValue, { fontSize: scale(20) }]}>12</Text>
+              <Text style={[styles.statLabel, { marginTop: scale(4), fontSize: scale(11) }]}>Joined</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>4</Text>
-              <Text style={styles.statLabel}>Created</Text>
+              <Text style={[styles.statValue, { fontSize: scale(20) }]}>4</Text>
+              <Text style={[styles.statLabel, { marginTop: scale(4), fontSize: scale(11) }]}>Created</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>3</Text>
-              <Text style={styles.statLabel}>Upcoming</Text>
+              <Text style={[styles.statValue, { fontSize: scale(20) }]}>3</Text>
+              <Text style={[styles.statLabel, { marginTop: scale(4), fontSize: scale(11) }]}>Upcoming</Text>
             </View>
           </View>
         </View>
 
-        <View style={styles.actions}>
+        <View style={[styles.actions, { gap: scale(9) }]}>
           <CustomButton title="Create New Event" onPress={() => navigation.navigate('CreateEvent')} />
           <CustomButton title="Logout" variant="secondary" onPress={() => navigation.replace('Login')} />
         </View>
@@ -48,39 +51,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  content: {
-    padding: 14,
-    gap: 14,
-  },
+  content: {},
   profileCard: {
     backgroundColor: colors.surface,
-    borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
-    padding: 18,
   },
   avatar: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   name: {
-    marginTop: 12,
     color: colors.accent,
-    fontSize: 22,
     fontWeight: '800',
   },
   email: {
-    marginTop: 4,
     color: colors.muted,
-    fontSize: 14,
   },
   statsRow: {
-    marginTop: 18,
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -91,15 +81,10 @@ const styles = StyleSheet.create({
   },
   statValue: {
     color: colors.primary,
-    fontSize: 22,
     fontWeight: '800',
   },
   statLabel: {
     color: colors.muted,
-    marginTop: 4,
-    fontSize: 12,
   },
-  actions: {
-    gap: 10,
-  },
+  actions: {},
 });

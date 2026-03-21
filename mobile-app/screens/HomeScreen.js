@@ -6,14 +6,21 @@ import EventCard from '../components/EventCard';
 import CustomButton from '../components/CustomButton';
 import { colors, gradients } from '../constants/theme';
 import { mockEvents } from '../services/mockEvents';
+import { useResponsive } from '../constants/responsive';
 
 export default function HomeScreen({ navigation }) {
+  const { width, scale, isLarge } = useResponsive();
+  const numColumns = width >= 430 ? 2 : 1;
+
   return (
     <SafeAreaView style={styles.screen}>
       <FlatList
         data={mockEvents}
+        key={numColumns}
+        numColumns={numColumns}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        columnWrapperStyle={numColumns > 1 ? { gap: scale(10) } : undefined}
+        contentContainerStyle={[styles.listContent, { padding: scale(12), paddingBottom: scale(90) }]}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View>
@@ -30,20 +37,22 @@ export default function HomeScreen({ navigation }) {
               }
             />
 
-            <LinearGradient colors={gradients.hero} style={styles.heroCard}>
-              <Text style={styles.heroTitle}>Weekend Picks</Text>
-              <Text style={styles.heroSubtitle}>Curated events near you with fast booking experience.</Text>
+            <LinearGradient colors={gradients.hero} style={[styles.heroCard, { borderRadius: scale(16), padding: scale(14), marginBottom: scale(14) }]}>
+              <Text style={[styles.heroTitle, { fontSize: scale(20) }]}>Weekend Picks</Text>
+              <Text style={[styles.heroSubtitle, { marginTop: scale(6), lineHeight: scale(19), fontSize: scale(13) }]}>Curated events near you with fast booking experience.</Text>
             </LinearGradient>
 
-            <Text style={styles.sectionTitle}>Trending Now</Text>
+            <Text style={[styles.sectionTitle, { fontSize: scale(15), marginBottom: scale(10) }]}>Trending Now</Text>
           </View>
         }
         renderItem={({ item }) => (
-          <EventCard
-            event={item}
-            onPressDetails={() => navigation.navigate('EventDetails', { event: item })}
-            onPressJoin={() => navigation.navigate('EventDetails', { event: item })}
-          />
+          <View style={numColumns > 1 ? { flex: 1 / numColumns } : undefined}>
+            <EventCard
+              event={item}
+              onPressDetails={() => navigation.navigate('EventDetails', { event: item })}
+              onPressJoin={() => navigation.navigate('EventDetails', { event: item })}
+            />
+          </View>
         )}
       />
     </SafeAreaView>
@@ -55,30 +64,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  listContent: {
-    padding: 14,
-    paddingBottom: 90,
-  },
+  listContent: {},
   heroCard: {
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 16,
+    overflow: 'hidden',
   },
   heroTitle: {
     color: colors.white,
-    fontSize: 21,
     fontWeight: '800',
   },
   heroSubtitle: {
     color: '#E7EEFF',
-    marginTop: 6,
-    lineHeight: 20,
   },
   sectionTitle: {
     color: colors.accent,
-    fontSize: 16,
     fontWeight: '800',
-    marginBottom: 10,
   },
   createBtn: {
     minWidth: 104,

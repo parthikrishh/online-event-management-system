@@ -4,10 +4,13 @@ import HomeScreen from '../screens/HomeScreen';
 import MyEventsScreen from '../screens/MyEventsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import { colors } from '../constants/theme';
+import { useResponsive } from '../constants/responsive';
 
 const Tab = createBottomTabNavigator();
 
 export default function AppTabs() {
+  const { scale } = useResponsive();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -16,15 +19,15 @@ export default function AppTabs() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: '#8E98A8',
         tabBarStyle: {
-          height: 64,
-          paddingTop: 6,
-          paddingBottom: 8,
+          height: scale(62),
+          paddingTop: scale(6),
+          paddingBottom: scale(7),
           borderTopWidth: 1,
           borderTopColor: colors.border,
           backgroundColor: colors.surface,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: scale(11),
           fontWeight: '700',
         },
         tabBarIcon: ({ color, size }) => {
@@ -34,7 +37,7 @@ export default function AppTabs() {
             ProfileTab: 'account-circle-outline',
           };
 
-          return <Icon name={iconMap[route.name]} color={color} size={size} />;
+          return <Icon name={iconMap[route.name]} color={color} size={scale(size)} />;
         },
       })}
     >

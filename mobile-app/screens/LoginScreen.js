@@ -4,22 +4,24 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import InputField from '../components/InputField';
 import CustomButton from '../components/CustomButton';
 import { colors } from '../constants/theme';
+import { useResponsive } from '../constants/responsive';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const { scale } = useResponsive();
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.card}>
-        <View style={styles.headRow}>
-          <Icon name="calendar-month" size={30} color={colors.primary} />
-          <Text style={styles.title}>Welcome Back</Text>
+    <KeyboardAvoidingView style={[styles.screen, { padding: scale(14) }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={[styles.card, { borderRadius: scale(20), padding: scale(16), gap: scale(12) }]}>
+        <View style={[styles.headRow, { gap: scale(9) }]}>
+          <Icon name="calendar-month" size={scale(28)} color={colors.primary} />
+          <Text style={[styles.title, { fontSize: scale(24) }]}>Welcome Back</Text>
         </View>
 
-        <Text style={styles.subtext}>Sign in to continue exploring and managing your events.</Text>
+        <Text style={[styles.subtext, { lineHeight: scale(19), fontSize: scale(13) }]}>Sign in to continue exploring and managing your events.</Text>
 
-        <View style={styles.form}>
+        <View style={[styles.form, { gap: scale(11) }]}>
           <InputField
             label="Email"
             icon="email-outline"
@@ -42,7 +44,7 @@ export default function LoginScreen({ navigation }) {
         </View>
 
         <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-          <Text style={styles.footerText}>
+          <Text style={[styles.footerText, { marginTop: scale(5), fontSize: scale(13) }]}>
             New user? <Text style={styles.link}>Create an account</Text>
           </Text>
         </TouchableOpacity>
@@ -56,37 +58,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     justifyContent: 'center',
-    padding: 16,
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 22,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 18,
-    gap: 14,
   },
   headRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
   },
   title: {
-    fontSize: 26,
     fontWeight: '800',
     color: colors.accent,
   },
   subtext: {
     color: colors.muted,
-    lineHeight: 20,
   },
-  form: {
-    gap: 12,
-  },
+  form: {},
   footerText: {
     textAlign: 'center',
     color: colors.muted,
-    marginTop: 6,
   },
   link: {
     color: colors.primary,

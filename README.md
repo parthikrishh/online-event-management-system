@@ -8,13 +8,15 @@
 
 A production-ready event booking platform with dedicated **user** and **admin** experiences, real-time updates, secure booking flow, and a fully responsive UI with a separate mobile app-style layout.
 
-## Latest Updates (March 2026)
+## Latest Final Updates (March 2026)
 
-- Separate mobile app-style shell for small screens
-- Improved Gate Scan Console UI for desktop readability
-- Refined Explore card/button behavior and clean VIP visibility
-- Updated deployment and documentation to latest Netlify + Render setup
-- Full README refresh with updated links, structure, and usage instructions
+- Full responsive web experience verified for mobile, tablet, and desktop breakpoints
+- Vendor compatibility fix applied for text truncation (`line-clamp` + `-webkit-line-clamp`)
+- Backend/frontend connectivity validated for local and deployed environments
+- Dedicated **React Native Expo mobile UI** added in `mobile-app/`
+- Mobile UI now adapts dimensions by device width using a shared responsive scaling utility
+- Reusable mobile components fully wired: `EventCard`, `CustomButton`, `InputField`, `HeaderBar`
+- Navigation finalized with stack + bottom tabs for a complete mobile flow
 
 ## Live Demo
 
@@ -32,6 +34,7 @@ Frontend: https://online-eventx-management-system.netlify.app/
 - User dashboard with booking history, invoices, and profile management
 - Real-time client refresh through SSE updates
 - Separate mobile shell (`MobileLayout`) for <= 768px viewports
+- Standalone Expo mobile frontend (`mobile-app`) with responsive dimension scaling
 
 ## Tech Stack
 
@@ -72,31 +75,31 @@ Frontend: https://online-eventx-management-system.netlify.app/
 
 ## Screenshots
 
-### 1) Home / Explore
+### Home / Explore
 
 ![Explore Events](screenshots/home.png)
 
-### 2) Admin Dashboard Overview
+### Admin Dashboard
 
 ![Admin Dashboard](screenshots/admin-dashboard.png)
 
-### 3) User Dashboard
+### User Dashboard
 
 ![User Dashboard](screenshots/user-dashboard.png)
 
-### 4) Hero Preview
+### Hero Preview
 
 ![Hero](src/assets/hero.png)
 
-### 5) Explore Cards (Responsive)
+### Explore Cards Responsive
 
 ![Explore Cards Responsive](screenshots/home.png)
 
-### 6) Admin Event Controls
+### Admin Event Controls
 
 ![Admin Event Controls](screenshots/admin-dashboard.png)
 
-### 7) Booking History and Profile
+### Booking History and Profile
 
 ![Booking History and Profile](screenshots/user-dashboard.png)
 
@@ -104,6 +107,14 @@ Frontend: https://online-eventx-management-system.netlify.app/
 
 ```text
 online-event-management-system/
+├── mobile-app/
+│   ├── components/
+│   ├── navigation/
+│   ├── screens/
+│   ├── services/
+│   ├── constants/
+│   ├── App.js
+│   └── package.json
 ├── backend/
 │   ├── data/
 │   │   └── db.json
@@ -164,6 +175,27 @@ npm run server
 npm run lint
 npm run build
 ```
+
+## Mobile App (Expo UI)
+
+Run the React Native mobile UI:
+
+```bash
+cd mobile-app
+npm install
+npx expo start
+```
+
+Mobile UI includes these screens:
+
+- Splash
+- Login
+- Register
+- Home
+- Event Details
+- Create Event
+- My Events
+- Profile
 
 ## Environment Variables
 
