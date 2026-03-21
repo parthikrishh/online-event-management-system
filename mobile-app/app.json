@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Event Management Mobile UI",
+    "slug": "event-management-mobile-ui",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {},
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
