@@ -120,31 +120,33 @@ function App() {
   return (
     <ToastProvider onToastChange={(t) => setToast(t)}>
       <Router>
-        {isMobile ? (
-          <MobileLayout user={user} setUser={setUser} toast={toast} onCloseToast={() => setToast(null)}>
-            <div className="main-content mobile-main-content">
-              <AnimatedRoutes user={user} setUser={setUser} />
-            </div>
-          </MobileLayout>
-        ) : (
-          <div className="app-container">
-            <Navbar user={user} setUser={setUser} />
-            {toast && (
-              <div className="toast-container">
-                <Toast
-                  message={toast.message}
-                  type={toast.type}
-                  onClose={() => setToast(null)}
-                />
+        <div className="w-full max-w-full overflow-x-hidden px-4 box-border app-root-shell">
+          {isMobile ? (
+            <MobileLayout user={user} setUser={setUser} toast={toast} onCloseToast={() => setToast(null)}>
+              <div className="main-content mobile-main-content">
+                <AnimatedRoutes user={user} setUser={setUser} />
               </div>
-            )}
-            <main className="main-content">
-              <AnimatedRoutes user={user} setUser={setUser} />
-            </main>
-            <Footer />
-          </div>
-        )}
-    </Router>
+            </MobileLayout>
+          ) : (
+            <div className="app-container">
+              <Navbar user={user} setUser={setUser} />
+              {toast && (
+                <div className="toast-container">
+                  <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                  />
+                </div>
+              )}
+              <main className="main-content">
+                <AnimatedRoutes user={user} setUser={setUser} />
+              </main>
+              <Footer />
+            </div>
+          )}
+        </div>
+      </Router>
     </ToastProvider>
   );
 }
