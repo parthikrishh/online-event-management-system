@@ -6,17 +6,7 @@
 ![Netlify](https://img.shields.io/badge/Frontend-Netlify-green)
 ![Render](https://img.shields.io/badge/Backend-Render-blueviolet)
 
-A production-ready event booking platform with dedicated **user** and **admin** experiences, real-time updates, secure booking flow, and a fully responsive UI with a separate mobile app-style layout.
-
-## Latest Final Updates (March 2026)
-
-- Full responsive web experience verified for mobile, tablet, and desktop breakpoints
-- Vendor compatibility fix applied for text truncation (`line-clamp` + `-webkit-line-clamp`)
-- Backend/frontend connectivity validated for local and deployed environments
-- Dedicated **React Native Expo mobile UI** added in `mobile-app/`
-- Mobile UI now adapts dimensions by device width using a shared responsive scaling utility
-- Reusable mobile components fully wired: `EventCard`, `CustomButton`, `InputField`, `HeaderBar`
-- Navigation finalized with stack + bottom tabs for a complete mobile flow
+A production-ready event booking platform with dedicated **user** and **admin** experiences, real-time updates, secure booking flow, and a fully responsive UI.
 
 ## Live Demo
 
@@ -33,8 +23,6 @@ Frontend: https://online-eventx-management-system.netlify.app/
 - Admin-defined VIP seats and VIP pricing model
 - User dashboard with booking history, invoices, and profile management
 - Real-time client refresh through SSE updates
-- Separate mobile shell (`MobileLayout`) for <= 768px viewports
-- Standalone Expo mobile frontend (`mobile-app`) with responsive dimension scaling
 
 ## Tech Stack
 
@@ -67,10 +55,6 @@ Frontend: https://online-eventx-management-system.netlify.app/
 - Card-based layout system
 - Responsive typography and spacing
 - Table behavior optimized for desktop and mobile
-- Dedicated mobile navigation shell:
-  - Sticky top bar
-  - Drawer menu
-  - Bottom navigation
 - Touch-friendly controls (44px minimum interactive height)
 
 ## Screenshots
@@ -91,30 +75,10 @@ Frontend: https://online-eventx-management-system.netlify.app/
 
 ![Hero](src/assets/hero.png)
 
-### Explore Cards Responsive
-
-![Explore Cards Responsive](screenshots/home.png)
-
-### Admin Event Controls
-
-![Admin Event Controls](screenshots/admin-dashboard.png)
-
-### Booking History and Profile
-
-![Booking History and Profile](screenshots/user-dashboard.png)
-
 ## Project Structure
 
 ```text
 online-event-management-system/
-├── mobile-app/
-│   ├── components/
-│   ├── navigation/
-│   ├── screens/
-│   ├── services/
-│   ├── constants/
-│   ├── App.js
-│   └── package.json
 ├── backend/
 │   ├── data/
 │   │   └── db.json
@@ -123,7 +87,6 @@ online-event-management-system/
 ├── screenshots/
 ├── src/
 │   ├── components/
-│   │   └── MobileLayout.jsx
 │   ├── pages/
 │   ├── services/
 │   ├── utils/
@@ -175,27 +138,6 @@ npm run server
 npm run lint
 npm run build
 ```
-
-## Mobile App (Expo UI)
-
-Run the React Native mobile UI:
-
-```bash
-cd mobile-app
-npm install
-npx expo start
-```
-
-Mobile UI includes these screens:
-
-- Splash
-- Login
-- Register
-- Home
-- Event Details
-- Create Event
-- My Events
-- Profile
 
 ## Environment Variables
 
