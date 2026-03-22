@@ -30,6 +30,18 @@ const AdminLogin = lazy(() => loadAdminLogin());
 const UserDashboard = lazy(() => loadUserDashboard());
 const AdminDashboard = lazy(() => loadAdminDashboard());
 
+function MobileEntryRedirect() {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (window.innerWidth <= 768 && location.pathname !== '/') {
+      window.history.replaceState({}, '', '/');
+    }
+  }, [location.pathname]);
+
+  return null;
+}
+
 function AnimatedRoutes({ user, setUser }) {
   const location = useLocation();
 
@@ -120,6 +132,7 @@ function App() {
   return (
     <ToastProvider onToastChange={(t) => setToast(t)}>
       <Router>
+        <MobileEntryRedirect />
         {isMobile ? (
           <MobileLayout user={user} setUser={setUser} toast={toast} onCloseToast={() => setToast(null)}>
             <div className="main-content mobile-main-content">
