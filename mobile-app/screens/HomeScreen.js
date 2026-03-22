@@ -9,7 +9,7 @@ import { mockEvents } from '../services/mockEvents';
 import { useResponsive } from '../constants/responsive';
 
 export default function HomeScreen({ navigation }) {
-  const { width, scale, isLarge } = useResponsive();
+  const { width, scale } = useResponsive();
   const numColumns = width >= 430 ? 2 : 1;
 
   return (
