@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { AnimatePresence } from 'framer-motion';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import MobileLayout from './components/MobileLayout';
 import { useMutation, api } from './services/apiService';
 import Toast from './components/Toast';
 import { ToastProvider } from './context/ToastContext';
@@ -88,14 +87,7 @@ function App() {
     }
   });
   const [toast, setToast] = useState(null);
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
   const seed = useMutation(api.events.seed);
-
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
 
   useEffect(() => {
     // Seed initial admin and demo user if data is missing
@@ -120,31 +112,23 @@ function App() {
   return (
     <ToastProvider onToastChange={(t) => setToast(t)}>
       <Router>
-        {isMobile ? (
-          <MobileLayout user={user} setUser={setUser} toast={toast} onCloseToast={() => setToast(null)}>
-            <div className="main-content mobile-main-content">
-              <AnimatedRoutes user={user} setUser={setUser} />
+        <div className="app-container">
+          <Navbar user={user} setUser={setUser} />
+          {toast && (
+            <div className="toast-container">
+              <Toast
+                message={toast.message}
+                type={toast.type}
+                onClose={() => setToast(null)}
+              />
             </div>
-          </MobileLayout>
-        ) : (
-          <div className="app-container">
-            <Navbar user={user} setUser={setUser} />
-            {toast && (
-              <div className="toast-container">
-                <Toast
-                  message={toast.message}
-                  type={toast.type}
-                  onClose={() => setToast(null)}
-                />
-              </div>
-            )}
-            <main className="main-content">
-              <AnimatedRoutes user={user} setUser={setUser} />
-            </main>
-            <Footer />
-          </div>
-        )}
-    </Router>
+          )}
+          <main className="main-content">
+            <AnimatedRoutes user={user} setUser={setUser} />
+          </main>
+          <Footer />
+        </div>
+        </Router>
     </ToastProvider>
   );
 }

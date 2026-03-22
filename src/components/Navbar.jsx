@@ -1,20 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, User, Menu, X } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
 import { setItem } from '../utils/storage';
 import { prefetchRoute } from '../utils/routePrefetch';
 
 export default function Navbar({ user, setUser }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  useEffect(() => {
-    document.body.style.overflow = isMenuOpen ? 'hidden' : '';
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isMenuOpen]);
 
   const handleLogout = () => {
     setItem('oems_current_user', null);
@@ -35,22 +27,10 @@ export default function Navbar({ user, setUser }) {
         Event<span>X</span>
       </Link>
 
-      <button
-        className="mobile-menu-btn"
-        onClick={() => setIsMenuOpen(!isMenuOpen)}
-        aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-        aria-expanded={isMenuOpen}
-        aria-controls="main-navigation"
-        type="button"
-      >
-        {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
-      
-      <div id="main-navigation" className={`nav-links ${isMenuOpen ? 'active' : ''}`}>
+      <div id="main-navigation" className="nav-links">
         <Link 
           to="/events" 
           className={`nav-link ${isActive('/events') || isActive('/') ? 'active' : ''}`}
-          onClick={() => setIsMenuOpen(false)}
           onMouseEnter={() => prefetch('events')}
           onFocus={() => prefetch('events')}
         >
@@ -61,7 +41,6 @@ export default function Navbar({ user, setUser }) {
             <Link 
               to={user.role === 'admin' ? '/admin' : '/dashboard'} 
               className={`nav-link ${isActive('/admin') || isActive('/dashboard') ? 'active' : ''}`}
-              onClick={() => setIsMenuOpen(false)}
               onMouseEnter={() => prefetch(user.role === 'admin' ? 'admin' : 'userDashboard')}
               onFocus={() => prefetch(user.role === 'admin' ? 'admin' : 'userDashboard')}
             >
@@ -84,7 +63,6 @@ export default function Navbar({ user, setUser }) {
             <Link 
               to="/login" 
               className="btn btn-primary"
-              onClick={() => setIsMenuOpen(false)}
               onMouseEnter={() => prefetch('userLogin')}
               onFocus={() => prefetch('userLogin')}
             >
@@ -93,7 +71,6 @@ export default function Navbar({ user, setUser }) {
             <Link 
               to="/admin-login" 
               className="btn btn-secondary"
-              onClick={() => setIsMenuOpen(false)}
               onMouseEnter={() => prefetch('adminLogin')}
               onFocus={() => prefetch('adminLogin')}
             >
