@@ -7,7 +7,7 @@ export default function Footer() {
           <p>Plan better events. Book faster. Manage smarter.</p>
         </div>
         <div className="site-footer__meta">
-          <span>Responsive on mobile, tablet, desktop</span>
+          <span>Enterprise event management system</span>
         </div>
       </div>
     </footer>

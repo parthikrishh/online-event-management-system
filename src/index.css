@@ -453,38 +453,6 @@ button {
   background: var(--surface-raised);
 }
 
-@media (min-width: 1025px) {
-  .scan-console {
-    max-width: 1020px;
-    gap: 1.05rem;
-  }
-
-  .scan-console__grid {
-    gap: 1.1rem;
-  }
-
-  .scan-console__scan-card,
-  .scan-console__result-card {
-    border-radius: 16px;
-  }
-
-  .scan-form {
-    gap: 0.75rem;
-  }
-
-  .scan-form .form-label {
-    font-size: 0.86rem;
-    letter-spacing: 0.01em;
-  }
-
-  .scan-console__scan-card .form-input,
-  .scan-console__result-card p,
-  .scan-recent-row,
-  .scan-time-pill {
-    font-size: 0.92rem;
-  }
-}
-
 .scan-recent-actions {
   display: flex;
   align-items: center;
@@ -500,36 +468,6 @@ button {
   background: rgba(16, 185, 129, 0.15);
   padding: 0.22rem 0.5rem;
   border-radius: 999px;
-}
-
-@media (max-width: 900px) {
-  .scan-console__grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 700px) {
-  .scan-console__stats {
-    grid-template-columns: 1fr;
-  }
-
-  .scan-form__row {
-    grid-template-columns: 1fr;
-  }
-
-  .scan-submit-btn {
-    width: 100%;
-  }
-
-  .scan-recent-row {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .scan-recent-actions {
-    width: 100%;
-    justify-content: space-between;
-  }
 }
 
 .grid {
@@ -819,13 +757,6 @@ button {
   margin-left: auto;
   min-width: 132px;
   justify-content: center;
-}
-
-@media (max-width: 560px) {
-  .event-card__cta {
-    width: 100%;
-    margin-left: 0;
-  }
 }
 
 .event-card--past {
@@ -1706,79 +1637,4 @@ th {
 
 .modal-event-actions .admin-btn {
   min-width: 120px;
-}
-
-@media (max-width: 980px) {
-  .main-content {
-    width: min(1240px, calc(100% - 1.25rem));
-  }
-
-  .event-details-card {
-    grid-template-columns: 1fr;
-  }
-
-  .event-details-img-wrap {
-    min-height: 220px;
-  }
-
-  .admin-dashboard-container {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-sidebar {
-    position: static;
-    display: flex;
-    gap: 0.3rem;
-    max-height: none;
-    overflow-x: auto;
-    padding: 0.55rem;
-  }
-
-  .admin-sidebar-item {
-    white-space: nowrap;
-    margin-bottom: 0;
-    padding: 0.52rem 0.62rem;
-  }
-
-  .admin-sidebar-title {
-    display: none;
-  }
-
-  .booking-meta-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .analytics-split {
-    grid-template-columns: 1fr;
-  }
-
-  .live-indicator {
-    white-space: normal;
-  }
-
-  .analytics-view .admin-card {
-    padding: 0.9rem;
-  }
-}
-
-@media (min-width: 769px) and (max-width: 1024px) {
-  .hero-panel {
-    grid-template-columns: minmax(0, 1.2fr) minmax(280px, 1fr);
-    align-items: end;
-  }
-
-  .main-content {
-    width: min(1240px, calc(100% - 1.8rem));
-  }
-}
-
-@media (min-width: 1025px) {
-  .hero-panel {
-    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr);
-    align-items: end;
-  }
-
-  .admin-dashboard-container {
-    grid-template-columns: 280px minmax(0, 1fr);
-  }
 }
