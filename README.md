@@ -63,18 +63,6 @@ Frontend: https://online-eventx-management-system.netlify.app/
 
 ![Explore Events](screenshots/home.png)
 
-### Admin Dashboard
-
-![Admin Dashboard](screenshots/admin-dashboard.png)
-
-### User Dashboard
-
-![User Dashboard](screenshots/user-dashboard.png)
-
-### Hero Preview
-
-![Hero](src/assets/hero.png)
-
 ## Project Structure
 
 ```text
